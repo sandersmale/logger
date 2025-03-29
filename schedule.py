@@ -52,7 +52,7 @@ def initialize_scheduler():
             download_omroeplvc,
             'cron',
             hour='*',
-            minute=5,
+            minute=8,  # Run at 8 minutes past the hour to match the original shell script
             id='download_omroeplvc',
             replace_existing=True
         )
@@ -543,21 +543,27 @@ def cleanup_local_files():
         logger.error(f"Error in cleanup_local_files: {e}")
 
 def download_omroeplvc():
-    """Download recordings from Omroep Land van Cuijk"""
+    """Download recordings from Omroep Land van Cuijk
+    
+    This task runs 8 minutes after each hour to download the previous hour's recording
+    from Omroep Land van Cuijk's archive.
+    """
     with app.app_context():
         try:
-            logger.info("Starting Omroep LvC download")
+            logger.info("⬇️ Starting Omroep LvC download task")
             
-            # Determine time to download
-            current_minute = datetime.now().minute
-            if current_minute < 5:
-                # Use previous hour
-                target_hour = (datetime.now() - timedelta(hours=1)).hour
-                target_date = (datetime.now() - timedelta(hours=1)).date()
-            else:
-                # Use current hour
-                target_hour = datetime.now().hour
-                target_date = date.today()
+            # Current time
+            now = datetime.now()
+            current_minute = now.minute
+            
+            # Log current timing
+            if current_minute < 8 or current_minute > 11:
+                logger.info(f"⬇️ Current minute is {current_minute}, should be around 8 minutes after the hour for optimal download. Continuing anyway.")
+            
+            # Always target the previous hour for the scheduled task
+            # This ensures we get the complete file after it's fully saved
+            target_hour = (now - timedelta(hours=1)).hour
+            target_date = (now - timedelta(hours=1)).date()
             
             # Determine day abbreviation (ma, di, wo, do, vr, za, zo)
             day_names = ['ma', 'di', 'wo', 'do', 'vr', 'za', 'zo']

@@ -134,32 +134,44 @@ def try_reach_and_validate(url):
 def is_stream_reachable(url):
     """Check if a stream URL is reachable"""
     try:
-        response = requests.head(url, timeout=10, allow_redirects=True, headers={
+        # First try HEAD request
+        try:
+            response = requests.head(url, timeout=10, allow_redirects=True, headers={
+                'User-Agent': 'Mozilla/5.0 (compatible; RadioLogger/1.0)'
+            })
+            
+            # Check HTTP status
+            if response.status_code >= 200 and response.status_code < 400:
+                # Check content type
+                content_type = response.headers.get('Content-Type', '').lower()
+                if 'audio' in content_type or 'mpegurl' in content_type:
+                    return True
+            
+        except requests.RequestException:
+            # HEAD request failed, but we'll still try GET below
+            pass
+        
+        # Try a GET request with limited data if HEAD failed or had wrong content type
+        logger.info(f"[is_stream_reachable] Trying GET request for {url}")
+        get_response = requests.get(url, timeout=10, stream=True, headers={
             'User-Agent': 'Mozilla/5.0 (compatible; RadioLogger/1.0)'
         })
         
         # Check HTTP status
-        if response.status_code < 200 or response.status_code >= 400:
-            logger.info(f"[is_stream_reachable] Bad HTTP status: {response.status_code}")
+        if get_response.status_code < 200 or get_response.status_code >= 400:
+            logger.info(f"[is_stream_reachable] Bad HTTP status: {get_response.status_code}")
+            get_response.close()
             return False
         
-        # Check content type
-        content_type = response.headers.get('Content-Type', '').lower()
+        # Read a small chunk
+        next(get_response.iter_content(chunk_size=65536), None)
+        
+        content_type = get_response.headers.get('Content-Type', '').lower()
+        get_response.close()
+        
         if 'audio' not in content_type and 'mpegurl' not in content_type:
-            # Try a GET request with limited data to check content type
-            get_response = requests.get(url, timeout=10, stream=True, headers={
-                'User-Agent': 'Mozilla/5.0 (compatible; RadioLogger/1.0)'
-            })
-            
-            # Read a small chunk
-            next(get_response.iter_content(chunk_size=1024), None)
-            
-            content_type = get_response.headers.get('Content-Type', '').lower()
-            get_response.close()
-            
-            if 'audio' not in content_type and 'mpegurl' not in content_type:
-                logger.info(f"[is_stream_reachable] Unexpected content type: {content_type}")
-                return False
+            logger.info(f"[is_stream_reachable] Unexpected content type: {content_type}")
+            return False
         
         return True
     
@@ -170,8 +182,14 @@ def is_stream_reachable(url):
 def is_stream_valid(url):
     """Validate a stream URL using ffmpeg"""
     try:
+        # Make sure we have ffmpeg path, fallback to just 'ffmpeg' if not configured
+        ffmpeg_path = app.config.get('FFMPEG_PATH', 'ffmpeg')
+        
+        logger.info(f"[is_stream_valid] Testing {url} with ffmpeg")
+        
+        # Prepare the command - similar to the PHP version
         cmd = [
-            app.config['FFMPEG_PATH'],
+            ffmpeg_path,
             '-user_agent', 'Mozilla/5.0 (compatible; RadioLogger/1.0)',
             '-i', url,
             '-t', '2',  # Try to get 2 seconds
@@ -179,28 +197,34 @@ def is_stream_valid(url):
             '-'
         ]
         
+        # Run the command with increased timeout
         process = subprocess.run(
             cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
-            timeout=10
+            timeout=15  # Increased timeout
         )
         
         output = process.stderr  # ffmpeg outputs to stderr
         
-        # Look for indicators that this is an audio stream
+        # Log a snippet of the output for debugging
+        logger.info(f"[is_stream_valid] ffmpeg output snippet: {output[:300]}")
+        
+        # Look for indicators that this is an audio stream (same checks as PHP)
         if ('Stream mapping' in output or
             'Output #0' in output or
             'Audio:' in output):
+            logger.info(f"[is_stream_valid] Success: {url} appears to be a valid audio stream")
             return True
         
-        logger.info(f"[is_stream_valid] ffmpeg output: {output[:200]}")
+        # If we get here, the stream is not valid
+        logger.info(f"[is_stream_valid] Failed: No audio indicators in ffmpeg output for {url}")
         return False
     
     except subprocess.TimeoutExpired:
-        logger.error("[is_stream_valid] ffmpeg timeout")
+        logger.error(f"[is_stream_valid] Timeout while testing {url}")
         return False
     except Exception as e:
-        logger.error(f"[is_stream_valid] Error: {str(e)}")
+        logger.error(f"[is_stream_valid] Error testing {url}: {str(e)}")
         return False

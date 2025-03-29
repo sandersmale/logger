@@ -34,10 +34,61 @@ cp /opt/radiologger/.env /opt/radiologger/.env.backup
 echo "Backup gemaakt in /opt/radiologger/.env.backup"
 
 echo ""
-echo "Stap 1: Git repository updaten..."
+echo "Stap 1: Radiologger bestanden bijwerken..."
 cd /opt/radiologger || exit 1
-git fetch
-git pull
+
+# Controleer of dit een Git repository is
+if [ -d ".git" ]; then
+    echo "Git repository gevonden, bezig met updaten..."
+    git fetch
+    git pull
+else
+    echo "Geen Git repository gevonden, kopiëren van bestanden..."
+    
+    # Vergelijkbaar met de installatieoptie
+    SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+    
+    if [ -f "$SCRIPT_DIR/main.py" ]; then
+        echo "Kopiëren van bestanden uit de script directory..."
+        # Maak eerst een backup van de hele directory
+        timestamp=$(date +%Y%m%d-%H%M%S)
+        cp -r /opt/radiologger /opt/radiologger.backup.$timestamp
+        echo "Backup gemaakt in /opt/radiologger.backup.$timestamp"
+        
+        # Kopieer alle bestanden behalve .env naar de installatie map
+        find "$SCRIPT_DIR" -type f -not -path "*/\.*" | grep -v "\.env$" | while read -r file; do
+            rel_path="${file#$SCRIPT_DIR/}"
+            parent_dir=$(dirname "/opt/radiologger/$rel_path")
+            mkdir -p "$parent_dir"
+            cp "$file" "/opt/radiologger/$rel_path"
+        done
+    else
+        echo "Update bestanden niet gevonden. Geef de locatie van de nieuwe bestanden op."
+        echo "Druk op Enter om de update te annuleren: "
+        read -r custom_path
+        
+        if [ -z "$custom_path" ]; then
+            echo "Update geannuleerd."
+            exit 0
+        elif [ -f "$custom_path/main.py" ]; then
+            echo "Kopiëren van bestanden uit $custom_path..."
+            timestamp=$(date +%Y%m%d-%H%M%S)
+            cp -r /opt/radiologger /opt/radiologger.backup.$timestamp
+            echo "Backup gemaakt in /opt/radiologger.backup.$timestamp"
+            
+            # Kopieer alle bestanden behalve .env
+            find "$custom_path" -type f -not -path "*/\.*" | grep -v "\.env$" | while read -r file; do
+                rel_path="${file#$custom_path/}"
+                parent_dir=$(dirname "/opt/radiologger/$rel_path")
+                mkdir -p "$parent_dir"
+                cp "$file" "/opt/radiologger/$rel_path"
+            done
+        else
+            echo "Geen geldige radiologger bestanden gevonden in $custom_path. Update geannuleerd."
+            exit 1
+        fi
+    fi
+fi
 
 echo ""
 echo "Stap 2: Dependencies updaten..."
@@ -82,9 +133,26 @@ if [[ -n "$use_default_flag" ]]; then
 fi
 
 echo ""
-echo "Stap 4: Diensten herstarten..."
+echo "Stap 4: Rechten instellen en diensten herstarten..."
+# Zorg ervoor dat bestandsrechten correct zijn ingesteld
+chown -R radiologger:radiologger /opt/radiologger
+chmod 600 /opt/radiologger/.env
+
+# Maak logs directory als die niet bestaat
+mkdir -p /var/log/radiologger
+chown -R radiologger:radiologger /var/log/radiologger
+
+# Maak recordings directory als die niet bestaat
+mkdir -p /var/lib/radiologger/recordings
+chown -R radiologger:radiologger /var/lib/radiologger
+
+# Herstarten van diensten
 systemctl restart radiologger
 systemctl restart nginx
+
+# Controleer status
+echo "Controleren van radiologger service status..."
+systemctl status radiologger --no-pager
 
 echo ""
 echo "====================================================================="

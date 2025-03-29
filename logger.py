@@ -577,20 +577,27 @@ def upload_and_remove():
         logger.error(f"Error in upload_and_remove task: {e}")
 
 def download_omroeplvc():
-    """Download recordings from Omroep Land van Cuijk"""
+    """Download recordings from Omroep Land van Cuijk
+    
+    This task should run 8 minutes after each hour to download the previous hour's recording
+    from Omroep Land van Cuijk's archive.
+    """
     logger.info("⬇️ Starting Omroep LvC download task")
     
     try:
+        # Current time
+        now = datetime.now()
+        current_minute = now.minute
+        
         # Determine time to download
-        current_minute = datetime.now().minute
-        if current_minute < 5:
-            # Use previous hour
-            target_hour = (datetime.now() - timedelta(hours=1)).hour
-            target_date = (datetime.now() - timedelta(hours=1)).date()
-        else:
-            # Use current hour
-            target_hour = datetime.now().hour
-            target_date = date.today()
+        # For scheduled download, verify we're running at approximately 8 minutes past the hour
+        if current_minute < 8 or current_minute > 11:
+            logger.info(f"⬇️ Current minute is {current_minute}, should be around 8 minutes after the hour for optimal download. Continuing anyway.")
+        
+        # Always target the previous hour for the scheduled task
+        # This ensures we get the complete file after it's fully saved
+        target_hour = (now - timedelta(hours=1)).hour
+        target_date = (now - timedelta(hours=1)).date()
         
         # Determine day abbreviation (ma, di, wo, do, vr, za, zo)
         day_names = ['ma', 'di', 'wo', 'do', 'vr', 'za', 'zo']
@@ -600,7 +607,7 @@ def download_omroeplvc():
         file_name = f"{day_abbr}{target_hour:02d}.mp3"
         remote_url = f"{app.config['OMROEP_LVC_URL']}{file_name}"
         
-        logger.info(f"⬇️ Trying to download: {remote_url}")
+        logger.info(f"⬇️ Trying to download Omroep LvC recording: {remote_url}")
         
         # Local path
         local_dir = os.path.join(app.config['RECORDINGS_DIR'], 'omroep land van cuijk', target_date.strftime('%Y-%m-%d'))

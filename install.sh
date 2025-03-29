@@ -60,8 +60,24 @@ chown -R radiologger:radiologger /var/log/radiologger
 chown -R radiologger:radiologger /var/lib/radiologger
 
 echo ""
-echo "Stap 3b: Radiologger installeren vanaf GitHub..."
-git clone https://github.com/sandersmale/logger.git /opt/radiologger
+echo "Stap 3b: Radiologger applicatiebestanden kopiëren..."
+# Kopieer alle bestanden naar de installatie map
+# We gaan uit van het feit dat het script in dezelfde directory staat als de applicatiebestanden
+# of dat de gebruiker de repository reeds heeft gekloned met git
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+if [ -f "$SCRIPT_DIR/main.py" ]; then
+    echo "Kopiëren van lokale bestanden vanaf $SCRIPT_DIR..."
+    cp -r "$SCRIPT_DIR"/* /opt/radiologger/
+elif [ -d "/tmp/radiologger" ]; then
+    echo "Kopiëren van bestanden uit /tmp/radiologger..."
+    cp -r /tmp/radiologger/* /opt/radiologger/
+else
+    echo "Radiologger bestanden niet gevonden in huidige map of in /tmp/radiologger."
+    echo "Ophalen van bestanden van GitHub repository..."
+    git clone https://github.com/sandersmale/logger.git /tmp/radiologger_tmp
+    cp -r /tmp/radiologger_tmp/* /opt/radiologger/
+    rm -rf /tmp/radiologger_tmp
+fi
 chown -R radiologger:radiologger /opt/radiologger
 
 echo ""
@@ -186,9 +202,6 @@ cat > /etc/nginx/sites-available/radiologger << 'EOL'
 server {
     listen 80;
     server_name logger.pilotradio.nl;
-    
-    # Voeg IP-adres toe voor hosts file/test
-    listen 68.183.3.122:80;
 
     access_log /var/log/nginx/radiologger_access.log;
     error_log /var/log/nginx/radiologger_error.log;
@@ -237,9 +250,17 @@ fi
 
 echo ""
 echo "Stap 10: Cron-taken instellen voor onderhoud..."
-(crontab -l 2>/dev/null || echo "") | \
+# Voeg crontab toe voor de radiologger gebruiker
+(sudo -u radiologger crontab -l 2>/dev/null || echo "") | \
     { cat; echo "0 2 * * * find /var/log/radiologger -name \"*.log\" -type f -mtime +30 -delete"; } | \
-    crontab -
+    sudo -u radiologger crontab -
+
+# Zet ook de crontab voor het downloaden van Omroep LvC bestanden
+# 8 minuten na het uur (net als in de scheduler)
+echo "Omroep LvC download taak instellen (8 minuten na het uur)..."
+(sudo -u radiologger crontab -l 2>/dev/null) | \
+    { cat; echo "8 * * * * cd /opt/radiologger && /opt/radiologger/venv/bin/python -c 'from logger import download_omroeplvc; download_omroeplvc()' >> /var/log/radiologger/omroeplvc_cron.log 2>&1"; } | \
+    sudo -u radiologger crontab -
 
 echo ""
 echo "====================================================================="
