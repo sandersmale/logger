@@ -1,0 +1,11 @@
+# Combined Cronjobs voor root (alle taken worden door root uitgevoerd)
+# Alle uitvoer (stdout en stderr) wordt gelogd naar /var/private/crontab.log
+
+# AO-opnames: exact op het hele uur
+0 * * * * QUERY_STRING="action=start_scheduled" /usr/bin/php /var/private/api.php >> /var/private/crontab.log 2>&1
+
+# Handmatige logopschoning: elke nacht om 04:00 (leegmaken van recordings.log in /var/private/logs)
+0 4 * * * > /var/private/logs/recordings.log >> /var/private/crontab.log 2>&1
+
+# Upload en remove taken: elke 15 minuten
+*/15 * * * * /var/private/upload_and_remove.sh >> /var/private/crontab.log 2>&1
