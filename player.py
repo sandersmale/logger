@@ -47,7 +47,7 @@ def list_recordings():
     
     # Query recordings based on filters
     query = Recording.query.filter_by(date=filter_date)
-    if selected_station != 'all' and selected_station != 'dennis':
+    if selected_station != 'all' and not selected_station.startswith('dennis_'):
         try:
             station_id = int(selected_station)
             query = query.filter_by(station_id=station_id)
@@ -58,8 +58,21 @@ def list_recordings():
     
     # Add Dennis recordings if selected or if showing all
     dennis_recordings = []
-    if selected_station == 'dennis' or selected_station == 'all':
-        for station in dennis_stations:
+    if selected_station.startswith('dennis_') or selected_station == 'all':
+        # Als er een specifiek Dennis station is geselecteerd
+        selected_dennis_id = None
+        if selected_station.startswith('dennis_'):
+            try:
+                selected_dennis_id = int(selected_station.replace('dennis_', ''))
+            except ValueError:
+                pass
+                
+        # Filter Dennis stations indien nodig
+        filtered_dennis_stations = dennis_stations
+        if selected_dennis_id is not None:
+            filtered_dennis_stations = [s for s in dennis_stations if s.id == selected_dennis_id]
+            
+        for station in filtered_dennis_stations:
             for hour in range(24):
                 dennis_recordings.append({
                     'station': station,

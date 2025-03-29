@@ -46,14 +46,16 @@
                 <label for="stationSelect" class="form-label">Station:</label>
                 <select id="stationSelect" class="form-select sr-highlight" aria-label="Station selecteren">
                     <option value="all" {% if selected_station == 'all' %}selected{% endif %}>Alle stations</option>
-                    <option value="dennis" {% if selected_station == 'dennis' %}selected{% endif %}>Dennis stations</option>
-                    <optgroup label="Lokale stations">
-                        {% for station in stations %}
-                            <option value="{{ station.id }}" {% if selected_station == station.id|string %}selected{% endif %}>
-                                {{ station.name }}
-                            </option>
-                        {% endfor %}
-                    </optgroup>
+                    {% for station in stations %}
+                        <option value="{{ station.id }}" {% if selected_station == station.id|string %}selected{% endif %}>
+                            {{ station.name }}
+                        </option>
+                    {% endfor %}
+                    {% for station in dennis_stations %}
+                        <option value="dennis_{{ station.id }}" {% if selected_station == 'dennis_' + station.id|string %}selected{% endif %}>
+                            {{ station.name }}
+                        </option>
+                    {% endfor %}
                 </select>
             </div>
             <div class="col-md-4">
@@ -82,58 +84,19 @@
     </div>
 </div>
 
-<!-- Recordings list -->
-<div class="card shadow">
+<!-- Instructie voor gebruik -->
+<div class="card shadow mt-4">
     <div class="card-header bg-primary text-white">
-        <i class="fas fa-play-circle me-2"></i>Opnames voor {{ selected_date.strftime('%d-%m-%Y') }}
+        <i class="fas fa-info-circle me-2"></i>Instructies
     </div>
     <div class="card-body">
-        <!-- Local recordings -->
-        {% if recordings %}
-            <h5 class="mb-3">Lokale opnames</h5>
-            <div class="list-group mb-4">
-                {% for recording in recordings %}
-                    <a href="{{ url_for('player.player', cloudpath='opnames/' + recording.station.name + '/' + recording.date|string + '/' + recording.hour) }}" 
-                       class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                        <div>
-                            <span class="badge bg-secondary hour-badge me-2">{{ recording.hour }}:00</span>
-                            <span>{{ recording.station.name }}</span>
-                            {% if recording.program_title %}
-                                <span class="text-muted ms-2">- {{ recording.program_title }}</span>
-                            {% endif %}
-                        </div>
-                        <span class="badge bg-primary rounded-pill">
-                            <i class="fas fa-play"></i>
-                        </span>
-                    </a>
-                {% endfor %}
-            </div>
-        {% endif %}
-
-        <!-- Dennis recordings -->
-        {% if dennis_recordings %}
-            <h5 class="mb-3">Dennis' opnames</h5>
-            <div class="list-group">
-                {% for recording in dennis_recordings %}
-                    <a href="{{ url_for('player.player', cloudpath='dennis/' + recording.station.folder + '/' + recording.date|string + '/' + recording.hour) }}" 
-                       class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                        <div>
-                            <span class="badge bg-secondary hour-badge me-2">{{ recording.hour }}:00</span>
-                            <span>{{ recording.station.name }}</span>
-                        </div>
-                        <span class="badge bg-primary rounded-pill">
-                            <i class="fas fa-play"></i>
-                        </span>
-                    </a>
-                {% endfor %}
-            </div>
-        {% endif %}
-
-        {% if not recordings and not dennis_recordings %}
-            <div class="alert alert-info" role="alert">
-                <i class="fas fa-info-circle me-2"></i>Geen opnames gevonden voor deze datum en/of station.
-            </div>
-        {% endif %}
+        <p>Om een opname te beluisteren:</p>
+        <ol>
+            <li>Selecteer een station uit het dropdown menu</li>
+            <li>Kies een datum</li>
+            <li>Selecteer een tijdstip uit de lijst</li>
+            <li>Klik op 'Afspelen' om de geselecteerde opname te beluisteren</li>
+        </ol>
     </div>
 </div>
 {% endblock %}
@@ -207,7 +170,7 @@
                 
                 // Check if matches selection
                 if ((selectedStation === 'all' || 
-                     selectedStation === 'dennis' && rec.stationId === 'dennis' ||
+                     selectedStation.startsWith('dennis_') && rec.stationId === 'dennis' ||
                      selectedStation === rec.stationId) &&
                     rec.date === selectedDate) {
                     
