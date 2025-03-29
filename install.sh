@@ -60,20 +60,9 @@ chown -R radiologger:radiologger /var/log/radiologger
 chown -R radiologger:radiologger /var/lib/radiologger
 
 echo ""
-echo "Wil je Radiologger installeren vanaf:"
-echo "1. Een Git repository"
-echo "2. Een lokaal bestand (upload zelf via SCP/SFTP)"
-echo "Kies (1/2): "
-read -r source_choice
-
-if [[ "$source_choice" == "1" ]]; then
-    read -p "Voer de Git repository URL in: " git_url
-    git clone "$git_url" /opt/radiologger
-    chown -R radiologger:radiologger /opt/radiologger
-else
-    echo "Kopieer de code zelf naar /opt/radiologger en druk op Enter om door te gaan"
-    read -r
-fi
+echo "Stap 3b: Radiologger installeren vanaf GitHub..."
+git clone https://github.com/sandersmale/logger.git /opt/radiologger
+chown -R radiologger:radiologger /opt/radiologger
 
 echo ""
 echo "Stap 4: Python virtuele omgeving en dependencies installeren..."
@@ -84,15 +73,22 @@ python3 -m venv venv
 
 echo ""
 echo "Stap 5: Configuratie bestand aanmaken..."
+# Genereer een automatische geheime sleutel
+secret_key=$(openssl rand -hex 24)
+echo "Automatisch gegenereerde geheime sleutel: $secret_key"
+
 # Vraag om de benodigde configuratiewaardes
-read -p "Voer een geheime sleutel in voor de applicatie: " secret_key
 read -p "Voer de Wasabi access key in: " wasabi_access
 read -p "Voer de Wasabi secret key in: " wasabi_secret
 read -p "Voer de Wasabi bucket naam in: " wasabi_bucket
 read -p "Voer de Wasabi regio in (standaard: eu-central-1): " wasabi_region
 wasabi_region=${wasabi_region:-eu-central-1}
-read -p "Voer de Dennis API URL in: " dennis_api
-read -p "Voer de Omroep LvC URL in: " lvc_url
+
+# Stel standaardwaarden in voor de API endpoints
+dennis_api="https://logger.dennishoogeveenmedia.nl/api/stations.json"
+echo "Dennis API URL ingesteld op: $dennis_api"
+lvc_url="https://gemist.omroeplvc.nl/"
+echo "Omroep LvC URL ingesteld op: $lvc_url"
 
 # Maak het .env bestand
 cat > /opt/radiologger/.env << EOL
@@ -169,6 +165,9 @@ cat > /etc/nginx/sites-available/radiologger << 'EOL'
 server {
     listen 80;
     server_name logger.pilotradio.nl;
+    
+    # Voeg IP-adres toe voor hosts file/test
+    listen 68.183.3.122:80;
 
     access_log /var/log/nginx/radiologger_access.log;
     error_log /var/log/nginx/radiologger_error.log;
