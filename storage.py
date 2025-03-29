@@ -12,8 +12,10 @@ def initialize_s3_client():
     """Initialize the S3 client for Wasabi"""
     return boto3.client(
         's3',
-        endpoint_url=app.config['S3_ENDPOINT'],
-        region_name=app.config['S3_REGION']
+        endpoint_url=app.config['WASABI_ENDPOINT_URL'],
+        region_name=app.config['WASABI_REGION'],
+        aws_access_key_id=app.config['WASABI_ACCESS_KEY'],
+        aws_secret_access_key=app.config['WASABI_SECRET_KEY']
     )
 
 def list_s3_files(prefix=''):
@@ -25,7 +27,7 @@ def list_s3_files(prefix=''):
         paginator = s3_client.get_paginator('list_objects_v2')
         result = []
         
-        for page in paginator.paginate(Bucket=app.config['S3_BUCKET'], Prefix=prefix):
+        for page in paginator.paginate(Bucket=app.config['WASABI_BUCKET'], Prefix=prefix):
             if 'Contents' in page:
                 for obj in page['Contents']:
                     result.append({
@@ -47,7 +49,7 @@ def generate_presigned_url(s3_key, expires_in=3600):
         
         url = s3_client.generate_presigned_url(
             'get_object',
-            Params={'Bucket': app.config['S3_BUCKET'], 'Key': s3_key},
+            Params={'Bucket': app.config['WASABI_BUCKET'], 'Key': s3_key},
             ExpiresIn=expires_in
         )
         
@@ -62,8 +64,8 @@ def upload_file_to_s3(local_path, s3_key):
     try:
         s3_client = initialize_s3_client()
         
-        s3_client.upload_file(local_path, app.config['S3_BUCKET'], s3_key)
-        logger.info(f"Uploaded {local_path} to s3://{app.config['S3_BUCKET']}/{s3_key}")
+        s3_client.upload_file(local_path, app.config['WASABI_BUCKET'], s3_key)
+        logger.info(f"Uploaded {local_path} to s3://{app.config['WASABI_BUCKET']}/{s3_key}")
         
         return True
     
@@ -76,8 +78,8 @@ def delete_file_from_s3(s3_key):
     try:
         s3_client = initialize_s3_client()
         
-        s3_client.delete_object(Bucket=app.config['S3_BUCKET'], Key=s3_key)
-        logger.info(f"Deleted s3://{app.config['S3_BUCKET']}/{s3_key}")
+        s3_client.delete_object(Bucket=app.config['WASABI_BUCKET'], Key=s3_key)
+        logger.info(f"Deleted s3://{app.config['WASABI_BUCKET']}/{s3_key}")
         
         return True
     
@@ -90,7 +92,7 @@ def file_exists_in_s3(s3_key):
     try:
         s3_client = initialize_s3_client()
         
-        s3_client.head_object(Bucket=app.config['S3_BUCKET'], Key=s3_key)
+        s3_client.head_object(Bucket=app.config['WASABI_BUCKET'], Key=s3_key)
         return True
     
     except ClientError as e:
@@ -126,7 +128,7 @@ def get_station_recording_size(station_id):
         
         for key in s3_keys:
             try:
-                response = s3_client.head_object(Bucket=app.config['S3_BUCKET'], Key=key)
+                response = s3_client.head_object(Bucket=app.config['WASABI_BUCKET'], Key=key)
                 total_size += response['ContentLength']
             except Exception:
                 pass

@@ -31,6 +31,13 @@ class Config:
     WASABI_REGION = os.environ.get('WASABI_REGION', 'eu-central-1')
     WASABI_ENDPOINT_URL = os.environ.get('WASABI_ENDPOINT_URL', 'https://s3.eu-central-1.wasabisys.com')
     
+    # Compatibiliteit met code dat S3_ prefix gebruikt
+    S3_ENDPOINT = WASABI_ENDPOINT_URL
+    S3_REGION = WASABI_REGION
+    S3_BUCKET = WASABI_BUCKET
+    S3_ACCESS_KEY = WASABI_ACCESS_KEY
+    S3_SECRET_KEY = WASABI_SECRET_KEY
+    
     # Omroep Land van Cuijk instellingen
     OMROEP_LVC_URL = os.environ.get('OMROEP_LVC_URL', 'https://gemist.omroeplvc.nl/')
     

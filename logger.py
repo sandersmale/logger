@@ -4,6 +4,7 @@ import subprocess
 import signal
 import logging
 import boto3
+import requests
 import sqlite3
 from app import app, db, scheduler
 from models import Station, Recording, ScheduledJob
@@ -318,8 +319,8 @@ def stop_recording(station_id):
                 if station.recording_url in line:
                     parts = line.split(" ", 1)
                     if parts[0].isdigit():
+                        pid = int(parts[0])
                         try:
-                            pid = int(parts[0])
                             os.kill(pid, signal.SIGTERM)
                             processes_killed += 1
                             logger.info(f"🛑 Opname voor {station.name} gestopt (PID: {pid}).")
@@ -353,8 +354,10 @@ def upload_and_remove():
             # Initialize S3 client
             s3_client = boto3.client(
                 's3',
-                endpoint_url=app.config['S3_ENDPOINT'],
-                region_name=app.config['S3_REGION']
+                endpoint_url=app.config['WASABI_ENDPOINT_URL'],
+                region_name=app.config['WASABI_REGION'],
+                aws_access_key_id=app.config['WASABI_ACCESS_KEY'],
+                aws_secret_access_key=app.config['WASABI_SECRET_KEY']
             )
             
             # 1. Find MP3 files to upload
@@ -381,7 +384,7 @@ def upload_and_remove():
                         
                         # Upload file if it doesn't exist or if local file is newer
                         try:
-                            s3_client.head_object(Bucket=app.config['S3_BUCKET'], Key=s3_key)
+                            s3_client.head_object(Bucket=app.config['WASABI_BUCKET'], Key=s3_key)
                             # File exists, check if local is newer (modification time)
                             local_mtime = os.path.getmtime(file_path)
                             
@@ -395,8 +398,8 @@ def upload_and_remove():
                             pass
                         
                         # Upload file
-                        s3_client.upload_file(file_path, app.config['S3_BUCKET'], s3_key)
-                        logger.info(f"⬆️ Uploaded {file_path} to s3://{app.config['S3_BUCKET']}/{s3_key}")
+                        s3_client.upload_file(file_path, app.config['WASABI_BUCKET'], s3_key)
+                        logger.info(f"⬆️ Uploaded {file_path} to s3://{app.config['WASABI_BUCKET']}/{s3_key}")
                         
                         # Add to database if not exists
                         station = Station.query.filter_by(name=station_name).first()
@@ -434,7 +437,7 @@ def upload_and_remove():
                 paginator = s3_client.get_paginator('list_objects_v2')
                 s3_files = []
                 
-                for page in paginator.paginate(Bucket=app.config['S3_BUCKET'], Prefix='opnames/'):
+                for page in paginator.paginate(Bucket=app.config['WASABI_BUCKET'], Prefix='opnames/'):
                     if 'Contents' in page:
                         for obj in page['Contents']:
                             s3_files.append(obj['Key'])
