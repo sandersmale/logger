@@ -5,6 +5,7 @@ from models import Station, Recording, DennisStation
 from auth import admin_required, editor_required
 from forms import StationForm
 import os
+import sys
 from datetime import datetime
 import logging
 
@@ -68,7 +69,7 @@ def debug_info():
         'ffmpeg_path': app.config['FFMPEG_PATH'],
         's3_bucket': app.config['S3_BUCKET'],
         's3_endpoint': app.config['S3_ENDPOINT'],
-        'python_version': os.sys.version,
+        'python_version': sys.version,
         'local_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         'db_uri': app.config['SQLALCHEMY_DATABASE_URI'].split('@')[-1] if '@' in app.config['SQLALCHEMY_DATABASE_URI'] else app.config['SQLALCHEMY_DATABASE_URI']
     }

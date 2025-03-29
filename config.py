@@ -17,6 +17,18 @@ BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 # Database
 SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL', 'sqlite:///radiologger.db')
 SQLALCHEMY_TRACK_MODIFICATIONS = False
+SQLALCHEMY_ENGINE_OPTIONS = {
+    "pool_recycle": 60,  # Reconnect after 60 seconds idle
+    "pool_pre_ping": True,  # Check connection validity before each use
+    "pool_size": 10,  # Maintain up to 10 connections
+    "max_overflow": 15,  # Allow up to 15 extra connections
+    "connect_args": {
+        "connect_timeout": 10,  # 10 seconds connection timeout
+        "keepalives": 1,  # Enable keepalives
+        "keepalives_idle": 30,  # Idle time before sending keepalive
+        "keepalives_interval": 10  # Interval between keepalives
+    }
+}
 
 # Session configuration
 SESSION_TYPE = 'filesystem'

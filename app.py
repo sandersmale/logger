@@ -23,6 +23,13 @@ app.secret_key = os.environ.get("SESSION_SECRET", "radiologger_secret_key")
 db.init_app(app)
 login_manager.init_app(app)
 
+# Set up database connection error handling
+@app.teardown_request
+def teardown_request(exception=None):
+    if exception:
+        db.session.rollback()
+    db.session.remove()
+
 # Configure login
 login_manager.login_view = 'login'
 login_manager.login_message = 'Please log in to access this page.'
