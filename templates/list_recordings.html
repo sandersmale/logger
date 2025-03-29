@@ -17,18 +17,32 @@
         min-width: 50px;
         text-align: center;
     }
+    /* Styling voor betere zichtbaarheid van de titels */
+    .card-header {
+        font-weight: bold;
+    }
+    /* Betere visuele onderscheiding tussen stations */
+    .list-group-item:hover {
+        background-color: rgba(13, 110, 253, 0.1);
+    }
+    /* Beter contrast voor de badges */
+    .hour-badge {
+        font-weight: bold;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
+<!-- Hoofdpagina titel is nu in de template verwijderd, wordt door base.html getoond -->
+
 <!-- Eenvoudige selectie interface -->
 <div class="card mb-4 shadow">
     <div class="card-header bg-primary text-white">
-        <i class="fas fa-filter me-2"></i>Radiologger
+        <i class="fas fa-filter me-2"></i>Selecteer Station en Datum
     </div>
     <div class="card-body">
         <div class="row g-3">
-            <div class="col-md-4">
+            <div class="col-md-5">
                 <label for="stationSelect" class="form-label">Station:</label>
                 <select id="stationSelect" class="form-select sr-highlight" aria-label="Station selecteren">
                     <option value="all" {% if selected_station == 'all' %}selected{% endif %}>Alle stations</option>
@@ -52,10 +66,10 @@
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <label for="hourSelect" class="form-label">Uur:</label>
                 <select id="hourSelect" class="form-select sr-highlight" aria-label="Uur selecteren" disabled>
-                    <option value="">Eerst station en datum selecteren</option>
+                    <option value="">Selecteer eerst</option>
                 </select>
             </div>
         </div>

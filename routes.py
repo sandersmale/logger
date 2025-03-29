@@ -20,13 +20,12 @@ def inject_now():
 
 @app.route('/')
 def index():
-    """Homepage - redirects to the appropriate landing page based on user auth status"""
-    if current_user.is_authenticated:
-        if current_user.role == 'listener':
-            return redirect(url_for('player.list_recordings'))
-        else:
-            return redirect(url_for('admin'))
-    return redirect(url_for('auth.login'))
+    """Homepage - toont lijst met opnames met uitklapbaar menu"""
+    if not current_user.is_authenticated:
+        return redirect(url_for('auth.login'))
+    
+    # Direct doorsturen naar lijst met opnames (hoofdpagina)
+    return redirect(url_for('player.list_recordings'))
 
 @app.route('/admin')
 @login_required

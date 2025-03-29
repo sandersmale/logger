@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 @player_bp.route('/list_recordings')
 @login_required
 def list_recordings():
-    """List all recordings with filtering options"""
+    """Hoofdpagina - toont lijst met opnames met uitklapbaar menu"""
     # Get filter parameters
     selected_date = request.args.get('date', date.today().strftime('%Y-%m-%d'))
     selected_station = request.args.get('station', 'all')
@@ -41,8 +41,8 @@ def list_recordings():
             'display': nav_date.strftime('%d-%m-%Y') + (' (vandaag)' if nav_date == today else '')
         })
     
-    # Get stations for dropdown
-    stations = Station.query.order_by(Station.name).all()
+    # Get stations for dropdown, geordend op display_order en naam
+    stations = Station.query.order_by(Station.display_order, Station.name).all()
     dennis_stations = DennisStation.query.filter_by(visible_in_logger=True).order_by(DennisStation.name).all()
     
     # Query recordings based on filters
