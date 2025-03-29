@@ -9,16 +9,13 @@ import json
 import os
 import subprocess
 import logging
-from datetime import datetime, date
-
-# Configureer logging
-logger = logging.getLogger(__name__)
-import logging
 from datetime import datetime, date, timedelta
 import re
 
-api_bp = Blueprint('api', __name__)
+# Configureer logging
 logger = logging.getLogger(__name__)
+
+api_bp = Blueprint('api', __name__)
 
 @api_bp.route('/dennis')
 @editor_required
