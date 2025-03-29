@@ -5,6 +5,18 @@ from flask_login import LoginManager
 from flask_wtf.csrf import CSRFProtect
 from sqlalchemy.orm import DeclarativeBase
 from apscheduler.schedulers.background import BackgroundScheduler
+from dotenv import load_dotenv
+import logging
+
+# Laad .env bestand als het bestaat
+load_dotenv()
+
+# Configuratie logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # Create base for SQLAlchemy models
 class Base(DeclarativeBase):
@@ -18,8 +30,25 @@ scheduler = BackgroundScheduler()
 
 # Create and configure the app
 app = Flask(__name__)
-app.config.from_pyfile('config.py')
-app.secret_key = os.environ.get("SESSION_SECRET", "radiologger_secret_key")
+
+# Database configuratie uit omgevingsvariabelen
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# Recordings en logs
+app.config['RECORDINGS_DIR'] = os.environ.get('RECORDINGS_DIR', 'recordings')
+app.config['LOGS_DIR'] = os.environ.get('LOGS_DIR', 'logs')
+app.config['RETENTION_DAYS'] = int(os.environ.get('RETENTION_DAYS', 30))
+# Omroep LvC configuratie
+app.config['OMROEP_LVC_URL'] = os.environ.get('OMROEP_LVC_URL', 'https://gemist.omroeplvc.nl/')
+
+# Zorg dat de benodigde mappen bestaan
+os.makedirs(app.config['RECORDINGS_DIR'], exist_ok=True)
+os.makedirs(app.config['LOGS_DIR'], exist_ok=True)
+
+# Secret key
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "radiologger_secret_key")
+
+logger.info(f"App configuratie geladen. Database: {app.config['SQLALCHEMY_DATABASE_URI']}")
 
 # Initialize extensions with app
 db.init_app(app)

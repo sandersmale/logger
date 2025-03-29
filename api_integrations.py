@@ -9,6 +9,11 @@ import json
 import os
 import subprocess
 import logging
+from datetime import datetime, date
+
+# Configureer logging
+logger = logging.getLogger(__name__)
+import logging
 from datetime import datetime, date, timedelta
 import re
 
@@ -84,88 +89,109 @@ def update_stations():
     
     return redirect(url_for('api.dennis_stations'))
 
+def get_fallback_stations():
+    """Fallback lijst van standaard radiostations wanneer de API niet beschikbaar is"""
+    print("Gebruik fallback-lijst van Nederlandse radiostations")
+    
+    return [
+        {
+            "folder": "radio1",
+            "name": "NPO Radio 1",
+            "url": "https://icecast.omroep.nl/radio1-bb-mp3"
+        },
+        {
+            "folder": "radio2",
+            "name": "NPO Radio 2",
+            "url": "https://icecast.omroep.nl/radio2-bb-mp3"
+        },
+        {
+            "folder": "radio3",
+            "name": "NPO 3FM",
+            "url": "https://icecast.omroep.nl/3fm-bb-mp3"
+        },
+        {
+            "folder": "radio4",
+            "name": "NPO Radio 4",
+            "url": "https://icecast.omroep.nl/radio4-bb-mp3"
+        },
+        {
+            "folder": "radio5",
+            "name": "NPO Radio 5",
+            "url": "https://icecast.omroep.nl/radio5-bb-mp3"
+        },
+        {
+            "folder": "funx",
+            "name": "FunX",
+            "url": "https://icecast.omroep.nl/funx-bb-mp3"
+        },
+        {
+            "folder": "bnr",
+            "name": "BNR Nieuwsradio",
+            "url": "https://stream.bnr.nl/bnr_mp3_128_03"
+        },
+        {
+            "folder": "skyradio",
+            "name": "Sky Radio",
+            "url": "https://19993.live.streamtheworld.com/SKYRADIO.mp3"
+        },
+        {
+            "folder": "radio538",
+            "name": "Radio 538",
+            "url": "https://21253.live.streamtheworld.com/RADIO538.mp3"
+        },
+        {
+            "folder": "radio10",
+            "name": "Radio 10",
+            "url": "https://20873.live.streamtheworld.com/RADIO10.mp3"
+        },
+        {
+            "folder": "qmusic",
+            "name": "Qmusic",
+            "url": "https://stream.qmusic.nl/qmusic/mp3"
+        },
+        {
+            "folder": "100nl",
+            "name": "100% NL",
+            "url": "https://stream.100p.nl/100pctnl.mp3"
+        },
+        {
+            "folder": "veronica",
+            "name": "Radio Veronica",
+            "url": "https://20873.live.streamtheworld.com/VERONICA.mp3"
+        },
+        {
+            "folder": "sublime",
+            "name": "Sublime FM",
+            "url": "https://stream.sublimefm.nl/mp3"
+        }
+    ]
+
 def refresh_dennis_api():
-    """Fetch the latest station data from Dennis' API"""
+    """Haal de laatste stationgegevens op van de Dennis API"""
     try:
-        # In de originele implementatie werd de API aangesproken,
-        # maar omdat deze momenteel niet beschikbaar is, gebruiken we een hardcoded dataset
-        # In een productieomgeving zou de juiste API URL gebruikt worden
+        # Configuratie voor de Dennis API
+        api_url = os.environ.get('DENNIS_API_URL', 'https://logger.dennishoogeveenmedia.nl/api/stations.json')
         
-        logger.info("API demo-modus gestart - gebruiken van standaard Nederlandse radiostations")
+        # Probeer de API aan te roepen
+        print(f"Dennis API aanroepen: {api_url}")
         
-        # Standaard Nederlandse radiostations
-        dennis_data = [
-            {
-                "folder": "radio1",
-                "name": "NPO Radio 1",
-                "url": "https://icecast.omroep.nl/radio1-bb-mp3"
-            },
-            {
-                "folder": "radio2",
-                "name": "NPO Radio 2",
-                "url": "https://icecast.omroep.nl/radio2-bb-mp3"
-            },
-            {
-                "folder": "radio3",
-                "name": "NPO 3FM",
-                "url": "https://icecast.omroep.nl/3fm-bb-mp3"
-            },
-            {
-                "folder": "radio4",
-                "name": "NPO Radio 4",
-                "url": "https://icecast.omroep.nl/radio4-bb-mp3"
-            },
-            {
-                "folder": "radio5",
-                "name": "NPO Radio 5",
-                "url": "https://icecast.omroep.nl/radio5-bb-mp3"
-            },
-            {
-                "folder": "funx",
-                "name": "FunX",
-                "url": "https://icecast.omroep.nl/funx-bb-mp3"
-            },
-            {
-                "folder": "bnr",
-                "name": "BNR Nieuwsradio",
-                "url": "https://stream.bnr.nl/bnr_mp3_128_03"
-            },
-            {
-                "folder": "skyradio",
-                "name": "Sky Radio",
-                "url": "https://19993.live.streamtheworld.com/SKYRADIO.mp3"
-            },
-            {
-                "folder": "radio538",
-                "name": "Radio 538",
-                "url": "https://21253.live.streamtheworld.com/RADIO538.mp3"
-            },
-            {
-                "folder": "radio10",
-                "name": "Radio 10",
-                "url": "https://20873.live.streamtheworld.com/RADIO10.mp3"
-            },
-            {
-                "folder": "qmusic",
-                "name": "Qmusic",
-                "url": "https://stream.qmusic.nl/qmusic/mp3"
-            },
-            {
-                "folder": "100nl",
-                "name": "100% NL",
-                "url": "https://stream.100p.nl/100pctnl.mp3"
-            },
-            {
-                "folder": "veronica",
-                "name": "Radio Veronica",
-                "url": "https://20873.live.streamtheworld.com/VERONICA.mp3"
-            },
-            {
-                "folder": "sublime",
-                "name": "Sublime FM",
-                "url": "https://stream.sublimefm.nl/mp3"
-            }
-        ]
+        dennis_data = []
+        
+        try:
+            response = requests.get(api_url, timeout=10)
+            if response.status_code == 200:
+                try:
+                    dennis_data = response.json()
+                    print(f"Data succesvol opgehaald van Dennis API: {len(dennis_data)} stations")
+                except json.JSONDecodeError:
+                    print("De API is bereikbaar maar gaf geen geldige JSON terug, gebruik fallback data")
+                    dennis_data = get_fallback_stations()
+            else:
+                print(f"API gaf statuscode {response.status_code}, gebruik fallback data")
+                dennis_data = get_fallback_stations()
+        except requests.RequestException as e:
+            print(f"Kan geen verbinding maken met Dennis API: {e}, gebruik fallback data")
+            dennis_data = get_fallback_stations()
         
         # Track changes
         added = 0

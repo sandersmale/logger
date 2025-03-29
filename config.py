@@ -1,59 +1,86 @@
+"""
+Configuratie instellingen voor de Radiologger applicatie.
+Dit bestand gebruikt omgevingsvariabelen voor productie instellingen.
+"""
+
 import os
-import logging
 from datetime import timedelta
 
-# Configure logging
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler()
-    ]
-)
+class Config:
+    """Basis configuratie instellingen"""
+    # Flask instellingen
+    SECRET_KEY = os.environ.get('FLASK_SECRET_KEY', 'development-key-replace-in-production')
+    SESSION_TYPE = 'filesystem'
+    PERMANENT_SESSION_LIFETIME = timedelta(days=7)
+    
+    # Database instellingen
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL', 'sqlite:///radiologger.db')
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    
+    # Logging instellingen
+    LOG_DIR = os.environ.get('LOGS_DIR', 'logs')
+    
+    # Opname instellingen
+    RECORDINGS_DIR = os.environ.get('RECORDINGS_DIR', 'recordings')
+    RETENTION_DAYS = int(os.environ.get('RETENTION_DAYS', 30))
+    
+    # Wasabi S3 instellingen
+    WASABI_ACCESS_KEY = os.environ.get('WASABI_ACCESS_KEY')
+    WASABI_SECRET_KEY = os.environ.get('WASABI_SECRET_KEY')
+    WASABI_BUCKET = os.environ.get('WASABI_BUCKET')
+    WASABI_REGION = os.environ.get('WASABI_REGION', 'eu-central-1')
+    WASABI_ENDPOINT_URL = os.environ.get('WASABI_ENDPOINT_URL', 'https://s3.eu-central-1.wasabisys.com')
+    
+    # Omroep Land van Cuijk instellingen
+    OMROEP_LVC_URL = os.environ.get('OMROEP_LVC_URL', 'https://gemist.omroeplvc.nl/')
+    
+    # Zorg ervoor dat mappen bestaan
+    @staticmethod
+    def init_app(app):
+        """Initialiseer app configuratie"""
+        # Zorg ervoor dat de benodigde mappen bestaan
+        os.makedirs(Config.LOG_DIR, exist_ok=True)
+        os.makedirs(Config.RECORDINGS_DIR, exist_ok=True)
+        
+        # Submap voor elk station aanmaken
+        stations_dir = os.path.join(Config.RECORDINGS_DIR, 'stations')
+        os.makedirs(stations_dir, exist_ok=True)
+        
+        # Submap voor Dennis stations
+        dennis_dir = os.path.join(Config.RECORDINGS_DIR, 'dennis')
+        os.makedirs(dennis_dir, exist_ok=True)
+        
+        # Submap voor Omroep Land van Cuijk
+        lvc_dir = os.path.join(Config.RECORDINGS_DIR, 'omroep land van cuijk')
+        os.makedirs(lvc_dir, exist_ok=True)
+        
+        return app
 
-# Base directory
-BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+class DevelopmentConfig(Config):
+    """Ontwikkel configuratie"""
+    DEBUG = True
 
-# Database
-SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL', 'sqlite:///radiologger.db')
-SQLALCHEMY_TRACK_MODIFICATIONS = False
-SQLALCHEMY_ENGINE_OPTIONS = {
-    "pool_recycle": 60,  # Reconnect after 60 seconds idle
-    "pool_pre_ping": True,  # Check connection validity before each use
-    "pool_size": 10,  # Maintain up to 10 connections
-    "max_overflow": 15,  # Allow up to 15 extra connections
-    "connect_args": {
-        "connect_timeout": 10,  # 10 seconds connection timeout
-        "keepalives": 1,  # Enable keepalives
-        "keepalives_idle": 30,  # Idle time before sending keepalive
-        "keepalives_interval": 10  # Interval between keepalives
-    }
+class TestingConfig(Config):
+    """Test configuratie"""
+    TESTING = True
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///test.db'
+    WTF_CSRF_ENABLED = False
+
+class ProductionConfig(Config):
+    """Productie configuratie"""
+    DEBUG = False
+    TESTING = False
+    # In productie wordt de database URI in een omgevingsvariabele gezet
+    # Voer database migraties uit voordat je deze wijzigt
+
+# Configuratie object op basis van omgeving selecteren
+config_env = os.environ.get('FLASK_ENV', 'development')
+config = {
+    'development': DevelopmentConfig,
+    'testing': TestingConfig,
+    'production': ProductionConfig,
+    'default': DevelopmentConfig
 }
 
-# Session configuration
-SESSION_TYPE = 'filesystem'
-PERMANENT_SESSION_LIFETIME = timedelta(days=7)  # 7 day session lifetime
-SESSION_SECRET = os.environ.get("SESSION_SECRET", "radiologger_secret_key")
-
-# File paths
-RECORDINGS_DIR = os.path.join(BASE_DIR, 'recordings')
-LOGS_DIR = os.path.join(BASE_DIR, 'logs')
-
-# S3 Storage (Wasabi)
-S3_BUCKET = os.environ.get('S3_BUCKET', 'radiologger')
-S3_ENDPOINT = os.environ.get('S3_ENDPOINT', 'https://s3.eu-central-1.wasabisys.com')
-S3_REGION = os.environ.get('S3_REGION', 'eu-central-1')
-
-# External APIs
-DENNIS_API_URL = os.environ.get('DENNIS_API_URL', 'https://logger.dennishoogeveenmedia.nl/audio/')
-OMROEP_LVC_URL = os.environ.get('OMROEP_LVC_URL', 'https://gemist.omroeplvc.nl/')
-
-# ffmpeg configuration
-FFMPEG_PATH = os.environ.get('FFMPEG_PATH', 'ffmpeg')  # Use just the command name to find it in PATH
-
-# File retention (in hours)
-LOCAL_FILE_RETENTION = int(os.environ.get('LOCAL_FILE_RETENTION', '2'))  # 2 hours
-
-# Ensure directories exist
-os.makedirs(RECORDINGS_DIR, exist_ok=True)
-os.makedirs(LOGS_DIR, exist_ok=True)
+# Standaard configuratie
+app_config = config.get(config_env, config['default'])
