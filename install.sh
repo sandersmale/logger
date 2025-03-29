@@ -127,13 +127,24 @@ echo ""
 echo "Stap 6: Database initialiseren en vullen met basisgegevens..."
 cd /opt/radiologger || exit 1
 
+# Vraag of de gebruiker standaard stations wil
+echo "Wil je de standaard radiostations uit de oude database gebruiken? (j/n): "
+read -r use_default_stations
+use_default_flag=""
+if [[ "$use_default_stations" =~ ^[jJ]$ ]]; then
+    use_default_flag="--use-default-stations"
+    echo "Standaard stations uit de oude database worden gebruikt."
+else
+    echo "Voorbeeld stations worden gebruikt."
+fi
+
 # Controleer of het setup_db.py script bestaat, anders gebruik main.py
 if [ -f "setup_db.py" ]; then
     sudo -u radiologger /opt/radiologger/venv/bin/python setup_db.py
 else
     echo "setup_db.py niet gevonden, initialiseer database via main.py..."
     sudo -u radiologger /opt/radiologger/venv/bin/flask db upgrade
-    sudo -u radiologger /opt/radiologger/venv/bin/python -c "from app import app, db; from seed_data import seed_initial_data; with app.app_context(): seed_initial_data()"
+    sudo -u radiologger /opt/radiologger/venv/bin/python seed_data.py $use_default_flag
 fi
 
 echo ""
