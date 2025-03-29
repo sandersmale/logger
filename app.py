@@ -75,8 +75,8 @@ def teardown_request(exception=None):
     db.session.remove()
 
 # Configure login
-login_manager.login_view = 'login'
-login_manager.login_message = 'Please log in to access this page.'
+login_manager.login_view = 'auth.login'
+login_manager.login_message = 'U moet inloggen om deze pagina te bekijken.'
 
 # Import and register blueprints
 from auth import auth_bp

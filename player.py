@@ -139,14 +139,16 @@ def player():
             # Generate S3 presigned URL
             s3_client = boto3.client(
                 's3',
-                endpoint_url=app.config['S3_ENDPOINT'],
-                region_name=app.config['S3_REGION']
+                endpoint_url=app.config['WASABI_ENDPOINT_URL'],
+                region_name=app.config['WASABI_REGION'],
+                aws_access_key_id=app.config['WASABI_ACCESS_KEY'],
+                aws_secret_access_key=app.config['WASABI_SECRET_KEY']
             )
             
             try:
                 final_url = s3_client.generate_presigned_url(
                     'get_object',
-                    Params={'Bucket': app.config['S3_BUCKET'], 'Key': s3_path},
+                    Params={'Bucket': app.config['WASABI_BUCKET'], 'Key': s3_path},
                     ExpiresIn=3600
                 )
                 

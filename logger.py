@@ -101,8 +101,13 @@ def start_scheduled_recordings():
         current_time = datetime.now()
         
         # Get list of running ffmpeg processes
-        process_output = subprocess.check_output(["pgrep", "-af", "ffmpeg"]).decode('utf-8')
-        process_lines = [line for line in process_output.split('\n') if line.strip()]
+        try:
+            process_output = subprocess.check_output(["pgrep", "-af", "ffmpeg"]).decode('utf-8')
+            process_lines = [line for line in process_output.split('\n') if line.strip()]
+        except subprocess.CalledProcessError:
+            # No ffmpeg processes running
+            process_lines = []
+            logger.info("Geen ffmpeg processen draaien momenteel")
         
         for station in stations:
             station_name = station.name
@@ -312,20 +317,25 @@ def stop_recording(station_id):
                 return {'success': False, 'error': 'Station not found'}
             
             # Find running processes for this station
-            process_output = subprocess.check_output(["pgrep", "-af", "ffmpeg"]).decode('utf-8')
-            processes_killed = 0
-            
-            for line in process_output.split('\n'):
-                if station.recording_url in line:
-                    parts = line.split(" ", 1)
-                    if parts[0].isdigit():
-                        pid = int(parts[0])
-                        try:
-                            os.kill(pid, signal.SIGTERM)
-                            processes_killed += 1
-                            logger.info(f"🛑 Opname voor {station.name} gestopt (PID: {pid}).")
-                        except Exception as e:
-                            logger.error(f"Error killing process {pid}: {e}")
+            try:
+                process_output = subprocess.check_output(["pgrep", "-af", "ffmpeg"]).decode('utf-8')
+                processes_killed = 0
+                
+                for line in process_output.split('\n'):
+                    if station.recording_url in line:
+                        parts = line.split(" ", 1)
+                        if parts[0].isdigit():
+                            pid = int(parts[0])
+                            try:
+                                os.kill(pid, signal.SIGTERM)
+                                processes_killed += 1
+                                logger.info(f"🛑 Opname voor {station.name} gestopt (PID: {pid}).")
+                            except Exception as e:
+                                logger.error(f"Error killing process {pid}: {e}")
+            except subprocess.CalledProcessError:
+                # No ffmpeg processes running
+                logger.info(f"Geen ffmpeg processen draaien momenteel voor {station.name}")
+                return {'success': True, 'processes_killed': 0}
             
             # Update job records
             jobs = ScheduledJob.query.filter_by(

@@ -66,8 +66,13 @@ if [[ -n "$use_default_flag" ]]; then
     echo "Dit zal alle bestaande station configuraties verwijderen. Doorgaan? (j/n): "
     read -r confirm_reset
     if [[ "$confirm_reset" =~ ^[jJ]$ ]]; then
-        # Gebruik psql om stations te verwijderen (nodig postgres wachtwoord)
+        # Gebruik psql om stations en gerelateerde records te verwijderen (nodig postgres wachtwoord)
         read -p "Voer het wachtwoord in voor de radiologger database gebruiker: " db_password
+        # Eerst gerelateerde records in de recordings tabel verwijderen
+        PGPASSWORD="$db_password" psql -h localhost -U radiologger -d radiologger -c "DELETE FROM recording WHERE station_id IN (SELECT id FROM station);"
+        # Daarna scheduled_job records die naar stations verwijzen
+        PGPASSWORD="$db_password" psql -h localhost -U radiologger -d radiologger -c "DELETE FROM scheduled_job WHERE station_id IN (SELECT id FROM station);"
+        # Tenslotte de stations zelf verwijderen
         PGPASSWORD="$db_password" psql -h localhost -U radiologger -d radiologger -c "DELETE FROM station;"
         echo "Stations verwijderd. Nieuwe stations importeren..."
         sudo -u radiologger /opt/radiologger/venv/bin/python seed_data.py $use_default_flag
