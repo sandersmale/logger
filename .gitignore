@@ -73,3 +73,9 @@ htmlcov/
 # Migratie bestanden
 migrations/versions/*.py
 !migrations/versions/add_display_order.py
+
+# Added to prevent __pycache__ directories from being committed
+*.pyc
+__pycache__/
+*/__pycache__/
+*/*/__pycache__/

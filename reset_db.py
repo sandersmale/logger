@@ -18,6 +18,24 @@ from setup_db import setup_database, add_default_dennis_stations
 # Veiligheidsmaatregel om te voorkomen dat dit per ongeluk in productie wordt uitgevoerd
 CONFIRM_TEXT = "JA_IK_WIL_ALLES_RESETTEN"
 
+def cleanup_cache_files():
+    """Verwijder alle __pycache__ directories en .pyc bestanden"""
+    import shutil
+    
+    for root, dirs, files in os.walk('.'):
+        # Verwijder __pycache__ directories
+        if '__pycache__' in dirs:
+            cache_dir = os.path.join(root, '__pycache__')
+            shutil.rmtree(cache_dir)
+            print(f"Verwijderd: {cache_dir}")
+        
+        # Verwijder .pyc bestanden
+        for file in files:
+            if file.endswith('.pyc'):
+                pyc_file = os.path.join(root, file)
+                os.remove(pyc_file)
+                print(f"Verwijderd: {pyc_file}")
+
 def reset_database():
     """Reset de database en initialiseer opnieuw"""
     print("WAARSCHUWING: Dit zal alle gegevens in de database verwijderen!")
@@ -52,6 +70,7 @@ def reset_database():
               f"{station_count} stations, {dennis_count} Dennis stations.")
 
 if __name__ == "__main__":
+    cleanup_cache_files()
     if len(sys.argv) > 1 and sys.argv[1] == "--force":
         # Als --force wordt gespecificeerd, sla de bevestiging over
         with app.app_context():
