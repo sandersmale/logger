@@ -2,6 +2,36 @@
 # Radiologger installatiescript voor Ubuntu 24.04
 # Dit script installeert en configureert de Radiologger applicatie
 
+# Controleer of het script als root draait
+if [[ $EUID -ne 0 ]]; then
+   echo "Dit script moet als root worden uitgevoerd (gebruik sudo)"
+   exit 1
+fi
+
+# Controleer of we op Ubuntu 24.04 draaien
+if ! grep -q "Ubuntu" /etc/os-release || ! grep -q "24.04" /etc/os-release; then
+    echo "WAARSCHUWING: Dit script is getest op Ubuntu 24.04."
+    echo "Je gebruikt een andere versie. Wil je toch doorgaan? (j/n)"
+    read -r antwoord
+    if [[ ! "$antwoord" =~ ^[jJ]$ ]]; then
+        echo "Installatie geannuleerd"
+        exit 1
+    fi
+fi
+
+# Controleer internetverbinding
+if ! ping -c 1 google.com >/dev/null 2>&1; then
+    echo "FOUT: Geen internetverbinding gevonden"
+    exit 1
+fi
+
+# Controleer beschikbare schijfruimte (minimaal 1GB)
+available_space=$(df -BG / | awk 'NR==2 {print $4}' | sed 's/G//')
+if [ "$available_space" -lt 1 ]; then
+    echo "FOUT: Onvoldoende schijfruimte beschikbaar (minimaal 1GB nodig)"
+    exit 1
+fi
+
 set -e  # Stop bij fouten
 
 # Controleer of het script als root wordt uitgevoerd

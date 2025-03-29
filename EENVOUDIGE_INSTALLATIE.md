@@ -1,4 +1,4 @@
-# Eenvoudige installatie van Radiologger op Digital Ocean
+# Radiologger Eenvoudige Installatie Instructies
 
 Deze handleiding beschrijft hoe je Radiologger eenvoudig kunt installeren op een Digital Ocean Ubuntu 24.04 VPS.
 
@@ -20,24 +20,31 @@ ssh root@68.183.3.122
 
 Vervang `68.183.3.122` door het IP-adres van je eigen droplet.
 
-## Stap 3: Download en voer het installatiescript uit
-
+## Stap 3: Maak een tijdelijke map en ga er naartoe
 ```bash
-# Maak een tijdelijke map en ga er naartoe
+# Maak de map aan
 mkdir -p /tmp/radiologger
-cd /tmp/radiologger
 
-# Download het installatiescript van GitHub
+# Ga naar de map
+cd /tmp/radiologger
+```
+
+## Stap 4: Download het installatiescript
+```bash
+# Download het script
 wget https://raw.githubusercontent.com/sandersmale/logger/main/install.sh
 
 # Maak het script uitvoerbaar
 chmod +x install.sh
-
-# Voer het installatiescript uit
-./install.sh
 ```
 
-## Stap 4: Volg de prompts in het script
+## Stap 5: Voer het installatiescript uit
+```bash
+# Start de installatie
+sudo ./install.sh
+```
+
+## Stap 6: Volg de prompts in het script
 
 Het script zal je vragen om enkele gegevens:
 
@@ -55,7 +62,7 @@ De andere waarden worden automatisch ingesteld:
 - Dennis API URL is vooraf ingesteld
 - Omroep LvC URL is vooraf ingesteld
 
-## Stap 5: Test de installatie
+## Stap 7: Test de installatie
 
 Na succesvolle installatie kun je de applicatie testen:
 
@@ -67,7 +74,7 @@ Na succesvolle installatie kun je de applicatie testen:
 
 **BELANGRIJK:** Verander deze wachtwoorden direct na de eerste inlog!
 
-## Stap 6: DNS configuratie
+## Stap 8: DNS configuratie
 
 Zorg dat het domein `logger.pilotradio.nl` naar het IP-adres van je VPS wijst door een A-record in te stellen bij je DNS provider.
 
@@ -96,6 +103,29 @@ Als je problemen ondervindt tijdens de installatie:
    tail -f /var/log/radiologger/error.log
    ```
 
+### Als wget niet werkt:
+```bash
+# Installeer wget eerst
+sudo apt update
+sudo apt install -y wget
+```
+
+### Als het script niet uitvoerbaar is:
+```bash
+# Controleer of het script is gedownload
+ls -l install.sh
+
+# Probeer opnieuw uitvoerbaar te maken
+sudo chmod +x install.sh
+```
+
+### Als het script faalt:
+1. Controleer of je internetverbinding werkt
+2. Controleer of je voldoende schijfruimte hebt: `df -h`
+3. Bekijk de logbestanden: `tail -f /var/log/radiologger/error.log`
+
+Voor meer gedetailleerde instructies, zie [INSTALL.md](INSTALL.md)
+
 ## Systeem updates
 
 Om in de toekomst updates van GitHub te krijgen:
@@ -104,4 +134,3 @@ Om in de toekomst updates van GitHub te krijgen:
 cd /opt/radiologger
 git pull
 systemctl restart radiologger
-```
