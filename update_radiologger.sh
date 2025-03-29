@@ -92,8 +92,21 @@ echo "Stap 2: Python en dependencies updaten..."
 # Installeer/upgrade setuptools en wheel als basis
 /opt/radiologger/venv/bin/pip install --upgrade setuptools wheel
 
-# Installeer de nieuwste versies van alle dependencies
-/opt/radiologger/venv/bin/pip install --upgrade -r export_requirements.txt
+# Controleer en installeer de dependencies uit het requirements bestand
+if [ -f "/opt/radiologger/export_requirements.txt" ]; then
+    echo "Requirements bestand gevonden op standaardlocatie."
+    /opt/radiologger/venv/bin/pip install --upgrade -r /opt/radiologger/export_requirements.txt
+elif [ -f "/opt/radiologger/requirements.txt" ]; then
+    echo "Alternative requirements.txt gevonden."
+    /opt/radiologger/venv/bin/pip install --upgrade -r /opt/radiologger/requirements.txt
+else
+    echo "Geen requirements-bestand gevonden. Update essentiële pakketten handmatig."
+    # Update essentiële pakketten handmatig als fallback
+    /opt/radiologger/venv/bin/pip install --upgrade flask flask-login flask-sqlalchemy flask-wtf flask-migrate
+    /opt/radiologger/venv/bin/pip install --upgrade python-dotenv sqlalchemy apscheduler boto3 requests
+    /opt/radiologger/venv/bin/pip install --upgrade trafilatura psycopg2-binary werkzeug gunicorn
+    /opt/radiologger/venv/bin/pip install --upgrade email-validator wtforms psutil
+fi
 
 # Zorg ervoor dat gunicorn ook up-to-date is
 /opt/radiologger/venv/bin/pip install --upgrade gunicorn

@@ -55,7 +55,20 @@ echo "6. Nginx configureren"
 echo "7. Optioneel: SSL certificaat genereren via Let's Encrypt"
 echo ""
 
+# Vraag eerst alle benodigde configuratiegegevens zodat de installatie ononderbroken kan verlopen
+echo "Voor de installatie zijn de volgende gegevens nodig:"
+echo "1. PostgreSQL database gebruikerswachtwoord"
+echo "2. Wasabi cloud storage gegevens"
 echo ""
+read -p "Kies een wachtwoord voor de PostgreSQL radiologger gebruiker: " db_password
+read -p "Voer de Wasabi access key in: " wasabi_access
+read -p "Voer de Wasabi secret key in: " wasabi_secret
+read -p "Voer de Wasabi bucket naam in: " wasabi_bucket
+read -p "Voer de Wasabi regio in (standaard: eu-central-1): " wasabi_region
+wasabi_region=${wasabi_region:-eu-central-1}
+echo "Alle benodigde gegevens ontvangen. De installatie start nu..."
+echo ""
+
 echo "Stap 1: Systeem updaten en pakketten installeren..."
 apt update
 apt upgrade -y
@@ -71,6 +84,11 @@ else
     echo "PostgreSQL 16 niet beschikbaar, installeren van nieuwste beschikbare versie..."
     apt install -y postgresql postgresql-contrib
 fi
+
+# Openssh-server configuratie automatiseren (geen prompts)
+export DEBIAN_FRONTEND=noninteractive
+echo 'openssh-server openssh-server/sshd_config_backup boolean true' | debconf-set-selections
+echo 'openssh-server openssh-server/sshd_config select keep_current' | debconf-set-selections
 
 # Multimedia tools
 apt install -y ffmpeg
@@ -89,7 +107,7 @@ apt install -y htop curl vim rsync
 
 echo ""
 echo "Stap 2: PostgreSQL database instellen..."
-read -p "Kies een wachtwoord voor de PostgreSQL radiologger gebruiker: " db_password
+# Gebruik het wachtwoord dat al eerder is opgevraagd
 sudo -u postgres psql -c "CREATE USER radiologger WITH PASSWORD '$db_password';"
 sudo -u postgres psql -c "CREATE DATABASE radiologger OWNER radiologger;"
 sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE radiologger TO radiologger;"
@@ -138,8 +156,21 @@ python3 -m venv venv
 # Installeer/upgrade setuptools en wheel als basis
 /opt/radiologger/venv/bin/pip install --upgrade setuptools wheel
 
-# Installeer de dependencies uit het requirements bestand
-/opt/radiologger/venv/bin/pip install -r export_requirements.txt
+# Controleer en installeer de dependencies uit het requirements bestand
+if [ -f "/opt/radiologger/export_requirements.txt" ]; then
+    echo "Requirements bestand gevonden op standaardlocatie."
+    /opt/radiologger/venv/bin/pip install -r /opt/radiologger/export_requirements.txt
+elif [ -f "/opt/radiologger/requirements.txt" ]; then
+    echo "Alternative requirements.txt gevonden."
+    /opt/radiologger/venv/bin/pip install -r /opt/radiologger/requirements.txt
+else
+    echo "Geen requirements-bestand gevonden. Installeer essentiële pakketten handmatig."
+    # Installeer essentiële pakketten handmatig als fallback
+    /opt/radiologger/venv/bin/pip install flask flask-login flask-sqlalchemy flask-wtf flask-migrate
+    /opt/radiologger/venv/bin/pip install python-dotenv sqlalchemy apscheduler boto3 requests
+    /opt/radiologger/venv/bin/pip install trafilatura psycopg2-binary werkzeug gunicorn
+    /opt/radiologger/venv/bin/pip install email-validator wtforms psutil
+fi
 
 # Installeer/upgrade extra benodigde pakketten
 /opt/radiologger/venv/bin/pip install --upgrade gunicorn
@@ -152,12 +183,7 @@ echo "Stap 5: Configuratie bestand aanmaken..."
 secret_key=$(openssl rand -hex 24)
 echo "Automatisch gegenereerde geheime sleutel: $secret_key"
 
-# Vraag om de benodigde configuratiewaardes
-read -p "Voer de Wasabi access key in: " wasabi_access
-read -p "Voer de Wasabi secret key in: " wasabi_secret
-read -p "Voer de Wasabi bucket naam in: " wasabi_bucket
-read -p "Voer de Wasabi regio in (standaard: eu-central-1): " wasabi_region
-wasabi_region=${wasabi_region:-eu-central-1}
+# Wasabi gegevens zijn al aan het begin opgevraagd
 
 # Stel standaardwaarden in voor de API endpoints
 dennis_api="https://logger.dennishoogeveenmedia.nl/api/stations.json"
