@@ -5,6 +5,7 @@ from flask_login import LoginManager
 from flask_wtf.csrf import CSRFProtect
 from sqlalchemy.orm import DeclarativeBase
 from apscheduler.schedulers.background import BackgroundScheduler
+from flask_migrate import Migrate
 from dotenv import load_dotenv
 import logging
 
@@ -27,6 +28,7 @@ db = SQLAlchemy(model_class=Base)
 login_manager = LoginManager()
 csrf = CSRFProtect()
 scheduler = BackgroundScheduler()
+migrate = Migrate()
 
 # Create and configure the app
 app = Flask(__name__)
@@ -52,6 +54,7 @@ logger.info(f"App configuratie geladen. Database: {app.config['SQLALCHEMY_DATABA
 
 # Initialize extensions with app
 db.init_app(app)
+migrate.init_app(app, db)
 login_manager.init_app(app)
 csrf.init_app(app)
 
