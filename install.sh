@@ -69,7 +69,9 @@ echo "Stap 4: Python virtuele omgeving en dependencies installeren..."
 cd /opt/radiologger || exit 1
 python3 -m venv venv
 /opt/radiologger/venv/bin/pip install --upgrade pip
-/opt/radiologger/venv/bin/pip install -r requirements.txt
+/opt/radiologger/venv/bin/pip install -r export_requirements.txt
+# Extra installeer gunicorn (voor productie)
+/opt/radiologger/venv/bin/pip install gunicorn
 
 echo ""
 echo "Stap 5: Configuratie bestand aanmaken..."
@@ -124,7 +126,15 @@ chmod 600 /opt/radiologger/.env
 echo ""
 echo "Stap 6: Database initialiseren en vullen met basisgegevens..."
 cd /opt/radiologger || exit 1
-sudo -u radiologger /opt/radiologger/venv/bin/python setup_db.py
+
+# Controleer of het setup_db.py script bestaat, anders gebruik main.py
+if [ -f "setup_db.py" ]; then
+    sudo -u radiologger /opt/radiologger/venv/bin/python setup_db.py
+else
+    echo "setup_db.py niet gevonden, initialiseer database via main.py..."
+    sudo -u radiologger /opt/radiologger/venv/bin/flask db upgrade
+    sudo -u radiologger /opt/radiologger/venv/bin/python -c "from app import app, db; from seed_data import seed_initial_data; with app.app_context(): seed_initial_data()"
+fi
 
 echo ""
 echo "Stap 7: Systemd service instellen..."
