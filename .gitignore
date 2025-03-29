@@ -1,0 +1,75 @@
+# Python bestanden
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtuele omgeving
+venv/
+ENV/
+env/
+
+# Logs en databases
+*.log
+*.sqlite
+*.db
+
+# OS specifieke bestanden
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE bestanden
+.idea/
+.vscode/
+*.sublime-workspace
+*.sublime-project
+
+# Applicatie specifieke mappen
+recordings/
+logs/
+
+# Configuratie en secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.cert
+
+# Tijdelijke bestanden
+*.swp
+*.bak
+*.tmp
+*.temp
+
+# Cache bestanden
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Migratie bestanden
+migrations/versions/*.py
+!migrations/versions/add_display_order.py
