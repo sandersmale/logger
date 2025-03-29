@@ -32,6 +32,7 @@ class Station(db.Model):
     name = db.Column(db.String(100), unique=True, nullable=False)
     recording_url = db.Column(db.String(255), nullable=False)
     always_on = db.Column(db.Boolean, default=False)
+    display_order = db.Column(db.Integer, default=999)  # Voor sortering in de interface
     
     # Schedule fields
     schedule_start_date = db.Column(db.Date, nullable=True)

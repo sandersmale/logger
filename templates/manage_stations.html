@@ -61,6 +61,7 @@
                 <table class="table table-hover">
                     <thead>
                         <tr>
+                            <th scope="col">Volgorde</th>
                             <th scope="col">Station</th>
                             <th scope="col">Status</th>
                             <th scope="col">URL</th>
@@ -72,6 +73,21 @@
                     <tbody>
                         {% for station in stations %}
                             <tr>
+                                <td class="text-center" style="width: 90px;">
+                                    <div class="btn-group-vertical" role="group" aria-label="Volgorde van {{ station.name }}">
+                                        <a href="{{ url_for('station.move_station_up', station_id=station.id) }}" 
+                                           class="btn btn-sm btn-outline-secondary" title="Verplaats omhoog"
+                                           aria-label="Verplaats {{ station.name }} omhoog">
+                                            <i class="fas fa-chevron-up"></i>
+                                        </a>
+                                        <a href="{{ url_for('station.move_station_down', station_id=station.id) }}" 
+                                           class="btn btn-sm btn-outline-secondary" title="Verplaats omlaag"
+                                           aria-label="Verplaats {{ station.name }} omlaag">
+                                            <i class="fas fa-chevron-down"></i>
+                                        </a>
+                                    </div>
+                                    <div class="mt-1 text-muted small">#{{ station.display_order }}</div>
+                                </td>
                                 <td>{{ station.name }}</td>
                                 <td>
                                     {% if station.always_on %}

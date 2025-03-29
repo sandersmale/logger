@@ -29,10 +29,25 @@ def index():
 @app.route('/admin')
 @login_required
 def admin():
-    """Admin dashboard - shows different options based on user role"""
-    stations = Station.query.order_by(Station.name).all()
+    """Statuspagina - toont informatie over lopende opnames en systeemstatus"""
+    from utils import get_running_recordings, check_disk_space, get_ffmpeg_version
+    from models import ScheduledJob
+    import psutil
     
-    # Get statistics
+    # Systeeminformatie
+    disk_space = check_disk_space()
+    ffmpeg_version = get_ffmpeg_version()
+    cpu_percent = psutil.cpu_percent(interval=0.1)
+    memory = psutil.virtual_memory()
+    
+    # Actuele opnames en jobs
+    running_recordings = get_running_recordings()
+    
+    # Scheduled jobs status
+    running_jobs = ScheduledJob.query.filter_by(status='running').all()
+    scheduled_jobs = ScheduledJob.query.filter_by(status='scheduled').all()
+    
+    # Station en opname statistieken
     total_recordings = Recording.query.count()
     total_stations = Station.query.count()
     always_on_stations = Station.query.filter_by(always_on=True).count()
@@ -44,18 +59,33 @@ def admin():
     dennis_count = DennisStation.query.count()
     dennis_visible = DennisStation.query.filter_by(visible_in_logger=True).count()
     
+    # Vandaag gemaakte opnames
+    today = datetime.now().date()
+    todays_recordings = Recording.query.filter_by(date=today).count()
+    
     stats = {
         'total_recordings': total_recordings,
         'total_stations': total_stations,
         'always_on_stations': always_on_stations,
         'scheduled_stations': scheduled_stations,
         'dennis_count': dennis_count,
-        'dennis_visible': dennis_visible
+        'dennis_visible': dennis_visible,
+        'todays_recordings': todays_recordings,
+        'system': {
+            'disk_space': disk_space,
+            'cpu_percent': cpu_percent,
+            'memory_percent': memory.percent,
+            'memory_used': memory.used // (1024 * 1024),  # MB
+            'memory_total': memory.total // (1024 * 1024),  # MB
+            'ffmpeg_version': ffmpeg_version
+        }
     }
     
     return render_template('admin.html', 
-                          title='Radiologger Beheer', 
-                          stations=stations,
+                          title='Radiologger Status', 
+                          running_recordings=running_recordings,
+                          running_jobs=running_jobs,
+                          scheduled_jobs=scheduled_jobs,
                           stats=stats,
                           current_user=current_user)
 

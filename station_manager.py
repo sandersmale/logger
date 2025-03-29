@@ -18,7 +18,8 @@ logger = logging.getLogger(__name__)
 @editor_required
 def manage_stations():
     """List all stations with management options"""
-    stations = Station.query.order_by(Station.name).all()
+    # Sorteer stations op display_order en dan op naam
+    stations = Station.query.order_by(Station.display_order, Station.name).all()
     
     # Get recording counts for each station
     station_counts = {}
@@ -230,3 +231,61 @@ def test_stream_endpoint():
         'status': 'error',
         'message': 'Ongeldige formuliergegevens'
     }), 400
+
+@station_bp.route('/move_station_up/<int:station_id>')
+@editor_required
+def move_station_up(station_id):
+    """Verplaats een station omhoog in de volgorde"""
+    station = Station.query.get_or_404(station_id)
+    
+    try:
+        # Zoek het station met de hoogste display_order die lager is dan deze
+        previous_station = Station.query.filter(
+            Station.display_order < station.display_order
+        ).order_by(Station.display_order.desc()).first()
+        
+        if previous_station:
+            # Verwissel de display_order waarden
+            temp_order = previous_station.display_order
+            previous_station.display_order = station.display_order
+            station.display_order = temp_order
+            db.session.commit()
+            flash(f'Station "{station.name}" naar boven verplaatst', 'success')
+        else:
+            flash(f'Station "{station.name}" staat al helemaal bovenaan', 'info')
+            
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error moving station up: {e}")
+        flash(f'Fout bij het verplaatsen van het station: {str(e)}', 'danger')
+    
+    return redirect(url_for('station.manage_stations'))
+
+@station_bp.route('/move_station_down/<int:station_id>')
+@editor_required
+def move_station_down(station_id):
+    """Verplaats een station omlaag in de volgorde"""
+    station = Station.query.get_or_404(station_id)
+    
+    try:
+        # Zoek het station met de laagste display_order die hoger is dan deze
+        next_station = Station.query.filter(
+            Station.display_order > station.display_order
+        ).order_by(Station.display_order).first()
+        
+        if next_station:
+            # Verwissel de display_order waarden
+            temp_order = next_station.display_order
+            next_station.display_order = station.display_order
+            station.display_order = temp_order
+            db.session.commit()
+            flash(f'Station "{station.name}" naar beneden verplaatst', 'success')
+        else:
+            flash(f'Station "{station.name}" staat al helemaal onderaan', 'info')
+            
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error moving station down: {e}")
+        flash(f'Fout bij het verplaatsen van het station: {str(e)}', 'danger')
+    
+    return redirect(url_for('station.manage_stations'))
