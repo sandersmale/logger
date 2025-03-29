@@ -86,6 +86,85 @@ def add_default_dennis_stations():
             "visible": True
         },
         {
+            "folder": "3fm",
+            "name": "NPO 3FM",
+            "url": "https://icecast.omroep.nl/3fm-bb-mp3",
+            "visible": True
+        },
+        {
+            "folder": "klassiek",
+            "name": "NPO Klassiek",
+            "url": "https://icecast.omroep.nl/radio4-bb-mp3",
+            "visible": True
+        },
+        {
+            "folder": "radio5",
+            "name": "NPO Radio 5",
+            "url": "https://icecast.omroep.nl/radio5-bb-mp3",
+            "visible": True
+        },
+        {
+            "folder": "funx",
+            "name": "FunX",
+            "url": "https://icecast.omroep.nl/funx-bb-mp3",
+            "visible": True
+        },
+        {
+            "folder": "bnr",
+            "name": "BNR Nieuwsradio",
+            "url": "https://stream.bnr.nl/bnr_mp3_128_20",
+            "visible": True
+        },
+        {
+            "folder": "skyradio",
+            "name": "Sky Radio",
+            "url": "https://23043.live.streamtheworld.com/SKYRADIO.mp3",
+            "visible": True
+        },
+        {
+            "folder": "radio538",
+            "name": "Radio 538",
+            "url": "https://21253.live.streamtheworld.com/RADIO538.mp3",
+            "visible": True
+        },
+        {
+            "folder": "radio10",
+            "name": "Radio 10",
+            "url": "https://23693.live.streamtheworld.com/RADIO10.mp3",
+            "visible": True
+        },
+        {
+            "folder": "qmusic",
+            "name": "Qmusic",
+            "url": "https://stream.qmusic.nl/qmusic/mp3",
+            "visible": True
+        },
+        {
+            "folder": "100nl",
+            "name": "100% NL",
+            "url": "https://stream.100p.nl/100pctnl.mp3",
+            "visible": True
+        },
+        {
+            "folder": "veronica",
+            "name": "Radio Veronica",
+            "url": "https://20873.live.streamtheworld.com/VERONICA.mp3",
+            "visible": True
+        },
+        {
+            "folder": "sublime",
+            "name": "Sublime",
+            "url": "https://25303.live.streamtheworld.com/SUBLIME.mp3",
+            "visible": True
+        }
+    ]
+        {
+            "folder": "radio2",
+            "name": "NPO Radio 2",
+            "url": "https://icecast.omroep.nl/radio2-bb-mp3",
+            "visible": True
+        },
+        {
             "folder": "radio3",
             "name": "NPO 3FM",
             "url": "https://icecast.omroep.nl/3fm-bb-mp3",

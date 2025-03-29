@@ -170,7 +170,13 @@ def refresh_dennis_api():
     """Haal de laatste stationgegevens op van de Dennis API"""
     try:
         # Configuratie voor de Dennis API
-        api_url = os.environ.get('DENNIS_API_URL', 'https://logger.dennishoogeveenmedia.nl/api/stations.json')
+        api_url = os.environ.get('DENNIS_API_URL', 'https://api.dennishoogeveenmedia.nl/v1/stations')
+        api_key = os.environ.get('DENNIS_API_KEY', '')
+        
+        headers = {
+            'Authorization': f'Bearer {api_key}',
+            'Accept': 'application/json'
+        }
         
         # Probeer de API aan te roepen
         print(f"Dennis API aanroepen: {api_url}")
@@ -178,7 +184,7 @@ def refresh_dennis_api():
         dennis_data = []
         
         try:
-            response = requests.get(api_url, timeout=10)
+            response = requests.get(api_url, headers=headers, timeout=10)
             if response.status_code == 200:
                 try:
                     dennis_data = response.json()
