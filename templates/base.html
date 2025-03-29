@@ -14,10 +14,49 @@
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
     
+    <!-- Accessibility enhancements -->
+    <style>
+        /* Focus styles for better visibility */
+        :focus {
+            outline: 3px solid #0d6efd !important;
+            outline-offset: 2px !important;
+        }
+        
+        /* Skip to content link */
+        .skip-link {
+            position: absolute;
+            top: -40px;
+            left: 0;
+            background: #0d6efd;
+            color: white;
+            padding: 8px;
+            z-index: 1050;
+            transition: top 0.2s;
+        }
+        
+        .skip-link:focus {
+            top: 0;
+        }
+        
+        /* Form controls better contrast */
+        .form-control, .form-select {
+            border-width: 2px;
+        }
+        
+        /* Screen reader visibility enhancements */
+        .sr-highlight:focus {
+            border: 2px solid #0d6efd;
+            box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.5);
+        }
+    </style>
+    
     <!-- Page-specific head content -->
     {% block head %}{% endblock %}
 </head>
 <body>
+    <!-- Skip link for screen readers -->
+    <a href="#main-content" class="skip-link">Skip naar inhoud</a>
+    
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
         <div class="container">
@@ -109,7 +148,9 @@
         {% endif %}
         
         <!-- Page content -->
-        {% block content %}{% endblock %}
+        <main id="main-content">
+            {% block content %}{% endblock %}
+        </main>
     </div>
     
     <!-- Footer -->

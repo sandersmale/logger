@@ -2,6 +2,7 @@ import os
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
+from flask_wtf.csrf import CSRFProtect
 from sqlalchemy.orm import DeclarativeBase
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -12,6 +13,7 @@ class Base(DeclarativeBase):
 # Initialize extensions
 db = SQLAlchemy(model_class=Base)
 login_manager = LoginManager()
+csrf = CSRFProtect()
 scheduler = BackgroundScheduler()
 
 # Create and configure the app
@@ -22,6 +24,7 @@ app.secret_key = os.environ.get("SESSION_SECRET", "radiologger_secret_key")
 # Initialize extensions with app
 db.init_app(app)
 login_manager.init_app(app)
+csrf.init_app(app)
 
 # Set up database connection error handling
 @app.teardown_request

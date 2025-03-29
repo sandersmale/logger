@@ -25,10 +25,14 @@ def dennis_stations():
     visible_stations = [s for s in stations if s.visible_in_logger]
     hidden_stations = [s for s in stations if not s.visible_in_logger]
     
+    # Create form for CSRF protection
+    form = DennisStationForm()
+    
     return render_template('dennis.html',
                           title="Dennis' Stations Beheer",
                           visible_stations=visible_stations,
-                          hidden_stations=hidden_stations)
+                          hidden_stations=hidden_stations,
+                          form=form)
 
 @api_bp.route('/update_dennis_api')
 @editor_required
