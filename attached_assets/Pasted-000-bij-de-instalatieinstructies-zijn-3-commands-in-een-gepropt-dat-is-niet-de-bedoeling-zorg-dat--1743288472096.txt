@@ -1,0 +1,27 @@
+000 bij de instalatieinstructies zijn 3 commands in een gepropt! dat is niet de bedoeling. zorg dat dit consistent en opgeruimt wordt tot een mooie overview.
+1: als de .sh file wordt geopend wordt gevraagd of ik door wil gaan, dat is pure onzon. ik wil natuurlijk doorgaan, anders open ik de file neit! haal dus die vraag weg en rammen met die hap.
+2. zorg dat alle pakketten ook echt de nieuwste zijn. zoek dit des noods online op.
+3:  Package configuration                                                           
+                                                                                 
+   ┌──────────────────────┤ Configuring openssh-server ├──────────────────────┐  
+   │ A new version (/tmp/tmp.jqy6SHbJL4) of configuration file                │  
+   │ /etc/ssh/sshd_config is available, but the version installed currently   │  
+   │ has been locally modified.                                               │  
+   │                                                                          │  
+   │ What do you want to do about modified configuration file sshd_config?    │  
+   │                                                                          │  
+ 
+zorg dat deze melding niet voorkomt en er gebeurd wat voor de instalatie wenselijk si baseer je op de rest van de software om dat te bepalen
+4: moeten we niet al eerder om een databace wachtwoord vragen? dan kan de instalatie lekker doorlopen dit geld voor mij ook voor de wasabi gegevens.
+5:  Downloading pip-25.0.1-py3-none-any.whl (1.8 MB)                                
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.8/1.8 MB 28.1 MB/s eta 0:00:00    
+ Installing collected packages: pip                                              
+   Attempting uninstall: pip                                                     
+     Found existing installation: pip 24.0                                       
+     Uninstalling pip-24.0:                                                      
+       Successfully uninstalled pip-24.0                                         
+ Successfully installed pip-25.0.1                                               
+ ERROR: Could not open requirements file: [Errno 2] No such file or directory: 'e
+ xport_requirements.txt'                                                         
+ 
+hier loopt het script dus weer vast terwijl die file er dus wel zou moeten zijn onderzoek dit zeer grondig en los op!

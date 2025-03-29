@@ -14,19 +14,13 @@ echo "Radiologger update script"
 echo "========================="
 echo ""
 
-# Vraag om bevestiging
+# Info weergeven over wat het script gaat doen
 echo "Dit script zal het volgende doen:"
-echo "1. Git repository updaten"
+echo "1. Radiologger bestanden bijwerken"
 echo "2. Dependencies updaten"
 echo "3. Database migraties uitvoeren (indien nodig)"
 echo "4. Diensten herstarten"
 echo ""
-echo "Wil je doorgaan? (j/n): "
-read -r response
-if [[ ! "$response" =~ ^[jJ]$ ]]; then
-    echo "Update geannuleerd"
-    exit 0
-fi
 
 echo ""
 echo "Backup maken van de huidige configuratie..."
@@ -91,9 +85,21 @@ else
 fi
 
 echo ""
-echo "Stap 2: Dependencies updaten..."
+echo "Stap 2: Python en dependencies updaten..."
+# Upgrade pip zelf
 /opt/radiologger/venv/bin/pip install --upgrade pip
-/opt/radiologger/venv/bin/pip install -r export_requirements.txt
+
+# Installeer/upgrade setuptools en wheel als basis
+/opt/radiologger/venv/bin/pip install --upgrade setuptools wheel
+
+# Installeer de nieuwste versies van alle dependencies
+/opt/radiologger/venv/bin/pip install --upgrade -r export_requirements.txt
+
+# Zorg ervoor dat gunicorn ook up-to-date is
+/opt/radiologger/venv/bin/pip install --upgrade gunicorn
+
+# Zorg ervoor dat de boto3 AWS SDK up-to-date is voor Wasabi S3 connectiviteit
+/opt/radiologger/venv/bin/pip install --upgrade boto3
 
 echo ""
 echo "Stap 3: Database migraties uitvoeren..."

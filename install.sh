@@ -44,7 +44,7 @@ echo "Radiologger installatiescript voor Ubuntu 24.04"
 echo "==============================================="
 echo ""
 
-# Vraag om bevestiging
+# Info over wat het script gaat doen
 echo "Dit script zal het volgende doen:"
 echo "1. Systeem updaten en benodigde pakketten installeren"
 echo "2. PostgreSQL database instellen"
@@ -54,23 +54,38 @@ echo "5. Systemd service instellen"
 echo "6. Nginx configureren"
 echo "7. Optioneel: SSL certificaat genereren via Let's Encrypt"
 echo ""
-echo "Wil je doorgaan? (j/n): "
-read -r response
-if [[ ! "$response" =~ ^[jJ]$ ]]; then
-    echo "Installatie geannuleerd"
-    exit 0
-fi
 
 echo ""
 echo "Stap 1: Systeem updaten en pakketten installeren..."
 apt update
 apt upgrade -y
-apt install -y python3 python3-pip python3-venv 
-apt install -y postgresql postgresql-contrib 
+
+# Installeer nieuwste Python-gerelateerde pakketten
+apt install -y python3 python3-pip python3-venv python3-dev
+
+# Controleer of PostgreSQL 16 beschikbaar is en installeer het
+if apt-cache show postgresql-16 &> /dev/null; then
+    echo "PostgreSQL 16 beschikbaar, installeren..."
+    apt install -y postgresql-16 postgresql-contrib-16 postgresql-client-16
+else
+    echo "PostgreSQL 16 niet beschikbaar, installeren van nieuwste beschikbare versie..."
+    apt install -y postgresql postgresql-contrib
+fi
+
+# Multimedia tools
 apt install -y ffmpeg
+
+# Webserver
 apt install -y nginx
+
+# SSL certificaten
 apt install -y certbot python3-certbot-nginx
+
+# Ontwikkelingstools
 apt install -y build-essential libpq-dev git
+
+# Extra tools die handig kunnen zijn voor beheer
+apt install -y htop curl vim rsync
 
 echo ""
 echo "Stap 2: PostgreSQL database instellen..."
@@ -113,11 +128,23 @@ chown -R radiologger:radiologger /opt/radiologger
 echo ""
 echo "Stap 4: Python virtuele omgeving en dependencies installeren..."
 cd /opt/radiologger || exit 1
+
+# Maak een nieuwe virtuele omgeving
 python3 -m venv venv
+
+# Upgrade pip zelf
 /opt/radiologger/venv/bin/pip install --upgrade pip
+
+# Installeer/upgrade setuptools en wheel als basis
+/opt/radiologger/venv/bin/pip install --upgrade setuptools wheel
+
+# Installeer de dependencies uit het requirements bestand
 /opt/radiologger/venv/bin/pip install -r export_requirements.txt
-# Extra installeer gunicorn (voor productie)
-/opt/radiologger/venv/bin/pip install gunicorn
+
+# Installeer/upgrade extra benodigde pakketten
+/opt/radiologger/venv/bin/pip install --upgrade gunicorn
+/opt/radiologger/venv/bin/pip install --upgrade boto3
+/opt/radiologger/venv/bin/pip install --upgrade psycopg2-binary
 
 echo ""
 echo "Stap 5: Configuratie bestand aanmaken..."
