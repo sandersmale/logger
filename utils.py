@@ -86,7 +86,7 @@ def get_running_recordings():
 def get_ffmpeg_version():
     """Get ffmpeg version information"""
     try:
-        output = subprocess.check_output([app.config['FFMPEG_PATH'], '-version']).decode('utf-8')
+        output = subprocess.check_output(['ffmpeg', '-version']).decode('utf-8')
         version_match = re.search(r'ffmpeg version\s+([^\s]+)', output)
         return version_match.group(1) if version_match else "Unknown"
     except Exception as e:

@@ -6,6 +6,8 @@ from auth import admin_required, editor_required
 from forms import StationForm
 import os
 import sys
+import subprocess
+import psutil
 from datetime import datetime
 import logging
 
@@ -122,34 +124,86 @@ def debug_info():
 @app.route('/health')
 def health_check():
     """Simple health check endpoint"""
+    status = {
+        'database': 'unknown',
+        'disk_space': 'unknown',
+        'logs_dir': 'unknown',
+        'ffmpeg': 'unknown',
+        'overall': 'unknown',
+        'details': {}
+    }
+    
+    # Check if database is accessible
     try:
-        # Check if database is accessible
         db.session.execute("SELECT 1")
-        
-        # Check disk space
-        disk_free_gb = os.statvfs(app.config['RECORDINGS_DIR']).f_bfree * os.statvfs(app.config['RECORDINGS_DIR']).f_frsize / (1024**3)
-        
-        # Check logs directory
-        if not os.path.isdir(app.config['LOGS_DIR']):
-            return jsonify({'status': 'error', 'message': 'Logs directory not found'}), 500
-            
-        # Check ffmpeg
-        try:
-            ffmpeg_version = os.popen(f"{app.config['FFMPEG_PATH']} -version").read()
-            if not ffmpeg_version:
-                return jsonify({'status': 'error', 'message': 'ffmpeg not found or not executable'}), 500
-        except Exception as e:
-            logger.error(f"Error checking ffmpeg: {e}")
-            return jsonify({'status': 'error', 'message': f'Error checking ffmpeg: {e}'}), 500
-            
-        return jsonify({
-            'status': 'healthy',
-            'timestamp': datetime.now().isoformat(),
-            'disk_free_gb': round(disk_free_gb, 2)
-        })
+        status['database'] = 'healthy'
+        status['details']['database'] = 'Database connection successful'
     except Exception as e:
-        logger.error(f"Health check failed: {e}")
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+        status['database'] = 'error'
+        status['details']['database'] = str(e)
+        logger.error(f"Database health check failed: {e}")
+    
+    # Check disk space
+    try:
+        disk_free_gb = os.statvfs(app.config['RECORDINGS_DIR']).f_bfree * os.statvfs(app.config['RECORDINGS_DIR']).f_frsize / (1024**3)
+        status['disk_space'] = 'healthy' if disk_free_gb > 2 else 'warning'
+        status['details']['disk_space'] = f'{round(disk_free_gb, 2)} GB free'
+    except Exception as e:
+        status['disk_space'] = 'error'
+        status['details']['disk_space'] = str(e)
+        logger.error(f"Disk space health check failed: {e}")
+    
+    # Check logs directory
+    try:
+        if os.path.isdir(app.config['LOGS_DIR']):
+            status['logs_dir'] = 'healthy'
+            status['details']['logs_dir'] = f"Directory exists: {app.config['LOGS_DIR']}"
+        else:
+            status['logs_dir'] = 'error'
+            status['details']['logs_dir'] = f"Directory not found: {app.config['LOGS_DIR']}"
+    except Exception as e:
+        status['logs_dir'] = 'error'
+        status['details']['logs_dir'] = str(e)
+        logger.error(f"Logs directory health check failed: {e}")
+    
+    # Check ffmpeg
+    try:
+        result = subprocess.run(['ffmpeg', '-version'], 
+                              stdout=subprocess.PIPE, 
+                              stderr=subprocess.PIPE, 
+                              text=True,
+                              timeout=5)
+        if result.returncode == 0:
+            ffmpeg_version = result.stdout.splitlines()[0] if result.stdout else "Unknown version"
+            status['ffmpeg'] = 'healthy'
+            status['details']['ffmpeg'] = ffmpeg_version
+        else:
+            status['ffmpeg'] = 'error'
+            status['details']['ffmpeg'] = f"FFmpeg error: {result.stderr}"
+    except Exception as e:
+        status['ffmpeg'] = 'error'
+        status['details']['ffmpeg'] = str(e)
+        logger.error(f"FFmpeg health check failed: {e}")
+    
+    # Determine overall status
+    if 'error' in status.values():
+        status['overall'] = 'error'
+        http_status = 500
+    elif 'warning' in status.values():
+        status['overall'] = 'warning'
+        http_status = 200
+    else:
+        status['overall'] = 'healthy'
+        http_status = 200
+    
+    response = {
+        'status': status['overall'],
+        'timestamp': datetime.now().isoformat(),
+        'checks': {k: v for k, v in status.items() if k != 'details' and k != 'overall'},
+        'details': status['details']
+    }
+    
+    return jsonify(response), http_status
 
 @app.errorhandler(404)
 def not_found_error(error):

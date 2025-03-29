@@ -36,12 +36,21 @@ app = Flask(__name__)
 # Database configuratie uit omgevingsvariabelen
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    'pool_pre_ping': True,  # Controleert de verbinding vóór gebruik
+    'pool_recycle': 300,    # Recyclet verbindingen na 5 minuten
+    'pool_timeout': 30,     # Timeout na 30 seconden
+    'pool_size': 10,        # Maximum aantal connecties in de pool
+    'max_overflow': 5       # Extra verbindingen boven pool_size (totaal 15)
+}
 # Recordings en logs
 app.config['RECORDINGS_DIR'] = os.environ.get('RECORDINGS_DIR', 'recordings')
 app.config['LOGS_DIR'] = os.environ.get('LOGS_DIR', 'logs')
 app.config['RETENTION_DAYS'] = int(os.environ.get('RETENTION_DAYS', 30))
 # Omroep LvC configuratie
 app.config['OMROEP_LVC_URL'] = os.environ.get('OMROEP_LVC_URL', 'https://gemist.omroeplvc.nl/')
+# FFmpeg pad
+app.config['FFMPEG_PATH'] = os.environ.get('FFMPEG_PATH', 'ffmpeg')
 
 # Zorg dat de benodigde mappen bestaan
 os.makedirs(app.config['RECORDINGS_DIR'], exist_ok=True)

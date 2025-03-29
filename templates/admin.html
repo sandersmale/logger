@@ -73,18 +73,18 @@
                         <h5><i class="fas fa-hdd me-2"></i>Schijfruimte</h5>
                         <div class="progress mb-2" style="height: 20px;" aria-label="Schijfruimte" role="progressbar">
                             <div class="progress-bar 
-                                {% if stats.system.disk_space.percent < 70 %}
+                                {% if stats.system.disk_space.used_percent < 70 %}
                                     bg-success
-                                {% elif stats.system.disk_space.percent < 90 %}
+                                {% elif stats.system.disk_space.used_percent < 90 %}
                                     bg-warning
                                 {% else %}
                                     bg-danger
                                 {% endif %}"
-                                style="width: {{ stats.system.disk_space.percent }}%">
-                                {{ stats.system.disk_space.percent }}%
+                                style="width: {{ stats.system.disk_space.used_percent }}%">
+                                {{ stats.system.disk_space.used_percent }}%
                             </div>
                         </div>
-                        <small>{{ stats.system.disk_space.free }} vrij van {{ stats.system.disk_space.total }}</small>
+                        <small>{{ stats.system.disk_space.free_gb }} GB vrij van {{ stats.system.disk_space.total_gb }} GB</small>
                     </div>
                     
                     <div class="col-md-6 mb-3">
