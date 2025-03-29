@@ -21,15 +21,15 @@
 {% endblock %}
 
 {% block content %}
-<!-- Dropdown navigation -->
+<!-- Eenvoudige selectie interface -->
 <div class="card mb-4 shadow">
     <div class="card-header bg-primary text-white">
-        <i class="fas fa-filter me-2"></i>Kies wat je wilt afspelen
+        <i class="fas fa-filter me-2"></i>Radiologger
     </div>
     <div class="card-body">
         <div class="row g-3">
             <div class="col-md-4">
-                <label for="stationSelect" class="form-label">1. Selecteer station:</label>
+                <label for="stationSelect" class="form-label">Station:</label>
                 <select id="stationSelect" class="form-select sr-highlight" aria-label="Station selecteren">
                     <option value="all" {% if selected_station == 'all' %}selected{% endif %}>Alle stations</option>
                     <option value="dennis" {% if selected_station == 'dennis' %}selected{% endif %}>Dennis stations</option>
@@ -43,7 +43,7 @@
                 </select>
             </div>
             <div class="col-md-4">
-                <label for="dateSelect" class="form-label">2. Selecteer datum:</label>
+                <label for="dateSelect" class="form-label">Datum:</label>
                 <select id="dateSelect" class="form-select sr-highlight" aria-label="Datum selecteren">
                     {% for day in date_nav %}
                         <option value="{{ day.formatted }}" {% if day.date == selected_date %}selected{% endif %}>
@@ -53,41 +53,17 @@
                 </select>
             </div>
             <div class="col-md-4">
-                <label for="hourSelect" class="form-label">3. Selecteer uur:</label>
+                <label for="hourSelect" class="form-label">Uur:</label>
                 <select id="hourSelect" class="form-select sr-highlight" aria-label="Uur selecteren" disabled>
                     <option value="">Eerst station en datum selecteren</option>
                 </select>
             </div>
         </div>
         
-        <div class="mt-3 d-flex justify-content-between">
-            <button id="applyFilter" class="btn btn-primary">
-                <i class="fas fa-filter me-1"></i>Filter toepassen
+        <div class="mt-3 d-flex justify-content-end">
+            <button id="playButton" class="btn btn-success" disabled>
+                <i class="fas fa-play me-1"></i>Afspelen
             </button>
-            
-            <div>
-                <button id="playButton" class="btn btn-success" disabled>
-                    <i class="fas fa-play me-1"></i>Afspelen
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Traditional date navigation (for accessibility) -->
-<div class="card mb-4 shadow">
-    <div class="card-header bg-primary text-white">
-        <i class="fas fa-calendar-alt me-2"></i>Navigeer per datum
-    </div>
-    <div class="card-body">
-        <div class="date-nav" role="toolbar" aria-label="Datum navigatie">
-            {% for day in date_nav %}
-                <a href="{{ url_for('player.list_recordings', date=day.formatted, station=selected_station) }}" 
-                   class="btn {% if day.date == selected_date %}btn-primary{% else %}btn-outline-secondary{% endif %}"
-                   aria-pressed="{% if day.date == selected_date %}true{% else %}false{% endif %}">
-                    {{ day.display }}
-                </a>
-            {% endfor %}
         </div>
     </div>
 </div>
@@ -155,7 +131,6 @@
         const stationSelect = document.getElementById('stationSelect');
         const dateSelect = document.getElementById('dateSelect');
         const hourSelect = document.getElementById('hourSelect');
-        const applyFilterBtn = document.getElementById('applyFilter');
         const playButton = document.getElementById('playButton');
         
         // Recording data structure
@@ -184,13 +159,13 @@
             {% endfor %}
         };
         
-        // Apply filter button click
-        applyFilterBtn.addEventListener('click', function() {
+        // Functie om de pagina te filteren bij wijziging van dropdown
+        function applyFilter() {
             const selectedDate = dateSelect.value;
             const selectedStation = stationSelect.value;
             
             window.location.href = "{{ url_for('player.list_recordings') }}?date=" + selectedDate + "&station=" + selectedStation;
-        });
+        }
         
         // Update hours dropdown when date or station changes
         function updateHoursDropdown() {
@@ -254,9 +229,7 @@
             }
         }
         
-        // Event listeners for dropdowns
-        stationSelect.addEventListener('change', updateHoursDropdown);
-        dateSelect.addEventListener('change', updateHoursDropdown);
+        // Deze handlers worden nu niet meer gebruikt omdat we direct naar de server navigeren
         
         // Play button click handler
         playButton.addEventListener('click', function() {
@@ -268,14 +241,23 @@
         // Allow pressing Enter in the selects to apply filter
         stationSelect.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
-                applyFilterBtn.click();
+                applyFilter();
             }
         });
         
         dateSelect.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
-                applyFilterBtn.click();
+                applyFilter();
             }
+        });
+        
+        // Auto-submit on dropdown change
+        stationSelect.addEventListener('change', function() {
+            applyFilter();
+        });
+        
+        dateSelect.addEventListener('change', function() {
+            applyFilter();
         });
         
         hourSelect.addEventListener('keypress', function(e) {
