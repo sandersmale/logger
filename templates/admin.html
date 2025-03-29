@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <!-- Station management card -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100 shadow">
+            <div class="card-header bg-primary text-white">
+                <i class="fas fa-broadcast-tower me-2"></i>Stations
+            </div>
+            <div class="card-body">
+                <p>Beheer de radiostations die worden opgenomen.</p>
+                <div class="list-group mb-3">
+                    <a href="{{ url_for('station.manage_stations') }}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-list me-2"></i>Alle stations
+                        <span class="badge bg-primary rounded-pill float-end">{{ stats.total_stations }}</span>
+                    </a>
+                    <a href="{{ url_for('station.add_station') }}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-plus me-2"></i>Station toevoegen
+                    </a>
+                </div>
+                <div class="d-grid">
+                    <a href="{{ url_for('station.manage_stations') }}" class="btn btn-primary">
+                        <i class="fas fa-cog me-1"></i>Stations beheren
+                    </a>
+                </div>
+            </div>
+            <div class="card-footer text-muted">
+                <small>{{ stats.always_on_stations }} always-on stations, {{ stats.scheduled_stations }} geplande opnames</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dennis API card -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100 shadow">
+            <div class="card-header bg-primary text-white">
+                <i class="fas fa-podcast me-2"></i>Dennis' Stations
+            </div>
+            <div class="card-body">
+                <p>Beheer de stations van Dennis in de logger.</p>
+                <div class="list-group mb-3">
+                    <a href="{{ url_for('api.dennis_stations') }}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-list me-2"></i>Alle Dennis stations
+                        <span class="badge bg-primary rounded-pill float-end">{{ stats.dennis_count }}</span>
+                    </a>
+                    <a href="{{ url_for('api.update_dennis_api') }}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-sync me-2"></i>Vernieuw via API
+                    </a>
+                </div>
+                <div class="d-grid">
+                    <a href="{{ url_for('api.dennis_stations') }}" class="btn btn-primary">
+                        <i class="fas fa-cog me-1"></i>Dennis stations beheren
+                    </a>
+                </div>
+            </div>
+            <div class="card-footer text-muted">
+                <small>{{ stats.dennis_visible }} stations zichtbaar in logger</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- User management card (admin only) -->
+    {% if current_user.is_admin() %}
+    <div class="col-md-6 mb-4">
+        <div class="card h-100 shadow">
+            <div class="card-header bg-primary text-white">
+                <i class="fas fa-users me-2"></i>Gebruikersbeheer
+            </div>
+            <div class="card-body">
+                <p>Beheer gebruikersaccounts en toegangsrechten.</p>
+                <div class="list-group mb-3">
+                    <a href="{{ url_for('auth.user_management') }}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-user-cog me-2"></i>Gebruikers beheren
+                    </a>
+                </div>
+                <div class="d-grid">
+                    <a href="{{ url_for('auth.user_management') }}" class="btn btn-primary">
+                        <i class="fas fa-cog me-1"></i>Gebruikers beheren
+                    </a>
+                </div>
+            </div>
+            <div class="card-footer text-muted">
+                <small>Rollen: admin, editor, listener</small>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Omroep LvC download (admin only) -->
+    {% if current_user.is_admin() %}
+    <div class="col-md-6 mb-4">
+        <div class="card h-100 shadow">
+            <div class="card-header bg-primary text-white">
+                <i class="fas fa-download me-2"></i>Omroep Land van Cuijk
+            </div>
+            <div class="card-body">
+                <p>Download de huidige uitzending van Omroep Land van Cuijk.</p>
+                <div class="alert alert-info" role="alert">
+                    <i class="fas fa-info-circle me-2"></i>De huidige tijd is: {{ now.strftime('%d-%m-%Y %H:%M') }}
+                </div>
+                <div class="d-grid">
+                    <a href="{{ url_for('api.download_omroeplvc') }}" class="btn btn-primary">
+                        <i class="fas fa-download me-1"></i>Download huidige uitzending
+                    </a>
+                </div>
+            </div>
+            <div class="card-footer text-muted">
+                <small>Downloads worden automatisch uitgevoerd op 5 minuten na het hele uur</small>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Debug info card (admin only) -->
+    {% if current_user.is_admin() %}
+    <div class="col-md-6 mb-4">
+        <div class="card h-100 shadow">
+            <div class="card-header bg-primary text-white">
+                <i class="fas fa-bug me-2"></i>Diagnostische informatie
+            </div>
+            <div class="card-body">
+                <p>Bekijk diagnostische informatie over het systeem.</p>
+                <div class="list-group mb-3">
+                    <a href="{{ url_for('debug_info') }}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-info-circle me-2"></i>Systeeminformatie
+                    </a>
+                    <a href="{{ url_for('health_check') }}" class="list-group-item list-group-item-action" target="_blank">
+                        <i class="fas fa-heartbeat me-2"></i>Health check
+                    </a>
+                </div>
+                <div class="d-grid">
+                    <a href="{{ url_for('debug_info') }}" class="btn btn-primary">
+                        <i class="fas fa-cog me-1"></i>Debug informatie
+                    </a>
+                </div>
+            </div>
+            <div class="card-footer text-muted">
+                <small>Totaal aantal opnames: {{ stats.total_recordings }}</small>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Recordings card -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100 shadow">
+            <div class="card-header bg-primary text-white">
+                <i class="fas fa-play-circle me-2"></i>Opnames
+            </div>
+            <div class="card-body">
+                <p>Bekijk en beheer opgenomen uitzendingen.</p>
+                <div class="list-group mb-3">
+                    <a href="{{ url_for('player.list_recordings') }}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-list-alt me-2"></i>Alle opnames bekijken
+                        <span class="badge bg-primary rounded-pill float-end">{{ stats.total_recordings }}</span>
+                    </a>
+                </div>
+                <div class="d-grid">
+                    <a href="{{ url_for('player.list_recordings') }}" class="btn btn-primary">
+                        <i class="fas fa-play me-1"></i>Naar opnames
+                    </a>
+                </div>
+            </div>
+            <div class="card-footer text-muted">
+                <small>Stream, download en snij fragmenten</small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,183 @@
+/* Custom styles for Radiologger */
+
+/* Accessibility enhancements */
+:focus {
+    outline: 3px solid #0d6efd !important;
+    outline-offset: 2px !important;
+}
+
+/* Improve visible focus for dark elements */
+.btn-dark:focus, .btn-primary:focus, .nav-link:focus {
+    outline-color: #ffffff !important;
+}
+
+/* Card enhancements */
+.card {
+    border: none;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+}
+
+.card-header {
+    font-weight: 500;
+}
+
+/* Audio player customizations */
+audio:focus {
+    outline: 3px solid #0d6efd;
+    border-radius: 4px;
+}
+
+/* For screen readers - hide visually but keep accessible */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+}
+
+/* Responsive tables */
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Better link contrast in dark mode */
+a {
+    color: #6ea8fe;
+    text-decoration: none;
+}
+
+a:hover {
+    color: #8bb9fe;
+    text-decoration: underline;
+}
+
+/* Badge enhancements */
+.badge {
+    font-weight: 500;
+    padding: 0.35em 0.65em;
+}
+
+/* Form accessibility */
+.form-control:focus, .form-select:focus, .form-check-input:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+.form-text {
+    color: #6c757d;
+}
+
+/* Alert enhancements */
+.alert {
+    border: none;
+    border-radius: 8px;
+}
+
+.alert-dismissible .btn-close {
+    padding: 0.75rem 1rem;
+}
+
+/* Navbar adjustments */
+.navbar {
+    padding: 0.75rem 1rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* List group refinements */
+.list-group-item {
+    border-left: none;
+    border-right: none;
+    padding: 0.75rem 1.25rem;
+}
+
+.list-group-item:first-child {
+    border-top: none;
+}
+
+.list-group-item:last-child {
+    border-bottom: none;
+}
+
+/* Scrollbar styling (for supported browsers) */
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: #343a40;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #6c757d;
+    border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #5c636a;
+}
+
+/* Modal adjustments */
+.modal-content {
+    border: none;
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+}
+
+/* Footer styling */
+footer {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Better button focus for accessibility */
+.btn:focus, .btn:active:focus {
+    box-shadow: 0 0 0 0.25rem rgba(255, 255, 255, 0.5) !important;
+}
+
+/* High contrast mode adjustments */
+@media (forced-colors: active) {
+    .btn, .card, .alert, .badge {
+        forced-color-adjust: none;
+    }
+}
+
+/* Station listings */
+.station-list {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 10px;
+}
+
+/* Page title enhancements */
+h1, h2, h3, h4, h5, h6 {
+    margin-bottom: 1rem;
+    font-weight: 500;
+    line-height: 1.2;
+}
+
+/* Alert customizations */
+.alert i {
+    margin-right: 0.5rem;
+}
+
+/* Form check labels */
+.form-check-label {
+    cursor: pointer;
+}
+
+/* Better spacing for tables */
+td, th {
+    padding: 0.75rem !important;
+}

@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block head %}
+<style>
+    /* Custom player styles */
+    .player-container {
+        background-color: #343a40;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .audio-container {
+        position: relative;
+        margin-bottom: 15px;
+    }
+    
+    .audio-container audio {
+        width: 100%;
+        display: block;
+    }
+    
+    .time-display {
+        font-family: monospace;
+        font-size: 1.2rem;
+        margin: 10px 0;
+        text-align: center;
+    }
+    
+    .custom-controls {
+        margin-bottom: 15px;
+    }
+    
+    .markers-container {
+        border-top: 1px solid #6c757d;
+        padding-top: 15px;
+        margin-top: 15px;
+    }
+    
+    #markerDisplay {
+        display: inline-block;
+        padding: 5px 10px;
+        background-color: #343a40;
+        border-radius: 4px;
+        margin: 0 10px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <!-- Debug info -->
+        {% if debug %}
+        <div class="alert alert-info mb-4" role="alert">
+            <h5><i class="fas fa-bug me-2"></i>Debug Informatie</h5>
+            <strong>Gebruikte URL voor streaming:</strong><br>
+            {{ final_url }}
+        </div>
+        {% endif %}
+        
+        <!-- Player card -->
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <i class="fas fa-play-circle me-2"></i>Opname Player
+            </div>
+            <div class="card-body">
+                <div class="player-container" aria-label="Audio speler">
+                    <!-- Audio element -->
+                    <div class="audio-container">
+                        <audio id="audioPlayer" controls>
+                            <source src="{{ final_url }}" type="audio/mpeg">
+                            Uw browser ondersteunt het audio-element niet.
+                        </audio>
+                    </div>
+                    
+                    <!-- Time display -->
+                    <div class="time-display" id="timeIndicator" aria-live="polite">
+                        00:00 / --:--
+                    </div>
+                    
+                    <!-- Custom controls -->
+                    <div class="custom-controls" role="toolbar" aria-label="Audio besturing">
+                        <div class="d-flex justify-content-center mb-2">
+                            <button id="btnBack120" class="btn btn-secondary me-2" aria-label="2 minuten terug">
+                                <i class="fas fa-backward"></i> 2 min
+                            </button>
+                            <button id="btnBack15" class="btn btn-secondary me-2" aria-label="15 seconden terug">
+                                <i class="fas fa-step-backward"></i> 15s
+                            </button>
+                            <button id="btnPlayPause" class="btn btn-primary me-2" aria-label="Afspelen of pauzeren">
+                                <i class="fas fa-play"></i>
+                            </button>
+                            <button id="btnFwd15" class="btn btn-secondary me-2" aria-label="15 seconden vooruit">
+                                15s <i class="fas fa-step-forward"></i>
+                            </button>
+                            <button id="btnFwd120" class="btn btn-secondary" aria-label="2 minuten vooruit">
+                                2 min <i class="fas fa-forward"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Fragment markers and download -->
+                    <div class="markers-container">
+                        <form method="get" action="{{ url_for('player.player') }}" id="downloadForm">
+                            <input type="hidden" name="cloudpath" value="{{ cloudpath }}">
+                            <input type="hidden" name="action" value="download">
+                            <input type="hidden" id="start" name="start" value="">
+                            <input type="hidden" id="end" name="end" value="">
+                            
+                            <div class="d-flex flex-wrap justify-content-center align-items-center">
+                                <button type="button" id="btnSetStart" class="btn btn-outline-primary me-2 mb-2" aria-label="Begin markeren">
+                                    <i class="fas fa-flag-checkered me-1"></i>Markeer Start
+                                </button>
+                                
+                                <span id="markerDisplay" class="mb-2" aria-live="polite">
+                                    Start: --:--, Eind: --:--
+                                </span>
+                                
+                                <button type="button" id="btnSetEnd" class="btn btn-outline-primary me-2 mb-2" aria-label="Einde markeren">
+                                    <i class="fas fa-flag me-1"></i>Markeer Eind
+                                </button>
+                            </div>
+                            
+                            <div class="d-flex flex-wrap justify-content-center mt-2">
+                                <button type="submit" id="btnDownloadFragment" class="btn btn-success me-2 mb-2" disabled aria-label="Fragment downloaden">
+                                    <i class="fas fa-cut me-1"></i>Download Fragment
+                                </button>
+                                
+                                <button type="button" id="btnDownloadFull" class="btn btn-success mb-2" aria-label="Volledig bestand downloaden">
+                                    <i class="fas fa-download me-1"></i>Download Volledig
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <!-- File info -->
+                <div class="card bg-light mb-3">
+                    <div class="card-body">
+                        <h5 class="card-title"><i class="fas fa-info-circle me-2"></i>Bestandsinformatie</h5>
+                        <p class="card-text"><strong>Bestandsnaam:</strong> {{ custom_filename }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer">
+                <a href="{{ url_for('player.list_recordings') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-1"></i>Terug naar overzicht
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/player.js') }}"></script>
+{% endblock %}

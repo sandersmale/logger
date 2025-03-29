@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+
+{% block head %}
+<style>
+    .schedule-section {
+        display: none;
+        background-color: rgba(0, 0, 0, 0.05);
+        border-radius: 8px;
+        padding: 15px;
+        margin-top: 15px;
+    }
+    #has_schedule:checked ~ .schedule-section {
+        display: block;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <i class="fas fa-plus-circle me-2"></i>Station toevoegen
+            </div>
+            <div class="card-body">
+                <form method="post" action="{{ url_for('station.add_station') }}" aria-label="Station toevoegen formulier">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-3">
+                        <label for="{{ form.name.id }}" class="form-label">Stationsnaam</label>
+                        {{ form.name(class="form-control", id=form.name.id, required=true) }}
+                        {% for error in form.name.errors %}
+                            <div class="text-danger">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="{{ form.recording_url.id }}" class="form-label">Stream URL</label>
+                        <div class="input-group">
+                            {{ form.recording_url(class="form-control", id=form.recording_url.id, required=true) }}
+                            <button type="button" class="btn btn-secondary" id="testStreamBtn">
+                                <i class="fas fa-check-circle me-1"></i>Test
+                            </button>
+                        </div>
+                        <div class="form-text">Voer de directe stream URL in, of een .m3u/.pls playlist URL</div>
+                        <div id="testStreamResult" class="mt-2"></div>
+                        {% for error in form.recording_url.errors %}
+                            <div class="text-danger">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="mb-3 form-check">
+                        {{ form.always_on(class="form-check-input", id=form.always_on.id) }}
+                        <label class="form-check-label" for="{{ form.always_on.id }}">
+                            <strong>Altijd opnemen (Always-On)</strong>
+                        </label>
+                        <div class="form-text">Selecteer deze optie om dit station continu op te nemen.</div>
+                    </div>
+                    
+                    <div class="mb-3 form-check">
+                        {{ form.has_schedule(class="form-check-input", id=form.has_schedule.id) }}
+                        <label class="form-check-label" for="{{ form.has_schedule.id }}">
+                            <strong>Geplande opname</strong>
+                        </label>
+                        <div class="form-text">Selecteer deze optie om een opnameschema in te stellen.</div>
+                    </div>
+                    
+                    <div class="schedule-section">
+                        <h5 class="mb-3">Opname schema</h5>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.schedule_start_date.id }}" class="form-label">Startdatum</label>
+                                {{ form.schedule_start_date(class="form-control", id=form.schedule_start_date.id, type="date") }}
+                                {% for error in form.schedule_start_date.errors %}
+                                    <div class="text-danger">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.schedule_start_hour.id }}" class="form-label">Startuur</label>
+                                {{ form.schedule_start_hour(class="form-select", id=form.schedule_start_hour.id) }}
+                                {% for error in form.schedule_start_hour.errors %}
+                                    <div class="text-danger">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.schedule_end_date.id }}" class="form-label">Einddatum</label>
+                                {{ form.schedule_end_date(class="form-control", id=form.schedule_end_date.id, type="date") }}
+                                {% for error in form.schedule_end_date.errors %}
+                                    <div class="text-danger">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.schedule_end_hour.id }}" class="form-label">Einduur</label>
+                                {{ form.schedule_end_hour(class="form-select", id=form.schedule_end_hour.id) }}
+                                {% for error in form.schedule_end_hour.errors %}
+                                    <div class="text-danger">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.record_reason.id }}" class="form-label">Reden voor opname</label>
+                            {{ form.record_reason(class="form-control", id=form.record_reason.id, rows=3) }}
+                            <div class="form-text">Optioneel: geef aan waarom dit station wordt opgenomen</div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                        <a href="{{ url_for('station.manage_stations') }}" class="btn btn-secondary me-md-2">
+                            <i class="fas fa-times me-1"></i>Annuleren
+                        </a>
+                        {{ form.submit(class="btn btn-primary") }}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Stream test form modal -->
+<div class="modal fade" id="testStreamModal" tabindex="-1" aria-labelledby="testStreamModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="testStreamModalLabel">Stream URL Testen</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Sluiten"></button>
+            </div>
+            <div class="modal-body">
+                <form id="testStreamForm">
+                    {{ test_form.hidden_tag() }}
+                    <div class="mb-3">
+                        <label for="{{ test_form.url.id }}" class="form-label">Stream URL</label>
+                        {{ test_form.url(class="form-control", id=test_form.url.id, required=true) }}
+                    </div>
+                    <div class="d-grid">
+                        {{ test_form.submit(class="btn btn-primary", id="submitTestBtn") }}
+                    </div>
+                </form>
+                <div id="modalTestResult" class="mt-3"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Sluiten</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/stream_test.js') }}"></script>
+{% endblock %}

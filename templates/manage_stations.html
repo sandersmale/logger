@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block head %}
+<style>
+    .station-actions {
+        white-space: nowrap;
+    }
+    .status-indicator {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-right: 5px;
+    }
+    .status-active {
+        background-color: #28a745;
+    }
+    .status-scheduled {
+        background-color: #ffc107;
+    }
+    .status-inactive {
+        background-color: #6c757d;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Action buttons -->
+<div class="mb-4">
+    <a href="{{ url_for('station.add_station') }}" class="btn btn-primary">
+        <i class="fas fa-plus me-1"></i>Station toevoegen
+    </a>
+    <a href="{{ url_for('admin') }}" class="btn btn-secondary ms-2">
+        <i class="fas fa-arrow-left me-1"></i>Terug naar Beheer
+    </a>
+</div>
+
+{% if request.args.get('delete_station') %}
+<div class="alert alert-danger" role="alert">
+    <h4 class="alert-heading"><i class="fas fa-exclamation-triangle me-2"></i>Bevestig verwijdering</h4>
+    <p>Dit station heeft {{ request.args.get('recording_count') }} opnames. Weet je zeker dat je het wilt verwijderen?</p>
+    <hr>
+    <a href="{{ url_for('station.delete_station', station_id=request.args.get('delete_station'), confirm=1) }}" 
+       class="btn btn-danger">
+        <i class="fas fa-trash me-1"></i>Ja, verwijder station
+    </a>
+    <a href="{{ url_for('station.manage_stations') }}" class="btn btn-secondary ms-2">
+        <i class="fas fa-times me-1"></i>Annuleren
+    </a>
+</div>
+{% endif %}
+
+<!-- Stations table -->
+<div class="card shadow">
+    <div class="card-header bg-primary text-white">
+        <i class="fas fa-broadcast-tower me-2"></i>Stations beheer
+    </div>
+    <div class="card-body">
+        {% if stations %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th scope="col">Station</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">URL</th>
+                            <th scope="col">Opnames</th>
+                            <th scope="col">Planning</th>
+                            <th scope="col">Acties</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for station in stations %}
+                            <tr>
+                                <td>{{ station.name }}</td>
+                                <td>
+                                    {% if station.always_on %}
+                                        <span class="status-indicator status-active" 
+                                              aria-hidden="true" title="Altijd aan"></span>Altijd aan
+                                    {% elif station.schedule_start_date %}
+                                        <span class="status-indicator status-scheduled" 
+                                              aria-hidden="true" title="Gepland"></span>Gepland
+                                    {% else %}
+                                        <span class="status-indicator status-inactive" 
+                                              aria-hidden="true" title="Inactief"></span>Inactief
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="text-truncate d-inline-block" style="max-width: 200px;" 
+                                          title="{{ station.recording_url }}">
+                                        {{ station.recording_url }}
+                                    </span>
+                                </td>
+                                <td>{{ station_counts[station.id] }}</td>
+                                <td>
+                                    {% if station.schedule_start_date %}
+                                        {{ station.schedule_start_date.strftime('%d-%m-%Y') }} {{ station.schedule_start_hour }}:00 tot 
+                                        {{ station.schedule_end_date.strftime('%d-%m-%Y') }} {{ station.schedule_end_hour }}:00
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td class="station-actions">
+                                    <a href="{{ url_for('station.edit_station', station_id=station.id) }}" 
+                                       class="btn btn-sm btn-primary" title="Bewerken"
+                                       aria-label="Bewerk station {{ station.name }}">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{{ url_for('station.start_manual', station_id=station.id) }}" 
+                                       class="btn btn-sm btn-success" title="Start opname"
+                                       aria-label="Start handmatige opname voor {{ station.name }}">
+                                        <i class="fas fa-play"></i>
+                                    </a>
+                                    <a href="{{ url_for('station.stop_station_recording', station_id=station.id) }}" 
+                                       class="btn btn-sm btn-warning" title="Stop opname"
+                                       aria-label="Stop opname voor {{ station.name }}">
+                                        <i class="fas fa-stop"></i>
+                                    </a>
+                                    <a href="{{ url_for('station.delete_station', station_id=station.id) }}" 
+                                       class="btn btn-sm btn-danger" title="Verwijderen"
+                                       aria-label="Verwijder station {{ station.name }}">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>Geen stations gevonden. Voeg stations toe om te beginnen met opnemen.
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6 mx-auto text-center">
+        <div class="card shadow border-danger">
+            <div class="card-header bg-danger text-white">
+                <h2 class="m-0"><i class="fas fa-exclamation-triangle me-2"></i>Fout {{ error_code }}</h2>
+            </div>
+            <div class="card-body">
+                <h4 class="card-title mb-4">{{ title }}</h4>
+                <p class="card-text">{{ error_message }}</p>
+                
+                <div class="mt-4">
+                    <a href="{{ url_for('index') }}" class="btn btn-primary">
+                        <i class="fas fa-home me-1"></i>Terug naar de startpagina
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

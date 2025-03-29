@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <!-- Add/edit user form -->
+    <div class="col-lg-4 mb-4">
+        <div class="card shadow h-100">
+            <div class="card-header bg-primary text-white">
+                <i class="fas fa-user-plus me-2"></i>Gebruiker toevoegen
+            </div>
+            <div class="card-body">
+                <form method="post" action="{{ url_for('auth.user_management') }}" aria-label="Gebruiker toevoegen formulier">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-3">
+                        <label for="{{ form.username.id }}" class="form-label">Gebruikersnaam</label>
+                        {{ form.username(class="form-control", id=form.username.id, required=true, aria_describedby="usernameHelp") }}
+                        <div id="usernameHelp" class="form-text">3-64 tekens</div>
+                        {% for error in form.username.errors %}
+                            <div class="text-danger">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="{{ form.password.id }}" class="form-label">Wachtwoord</label>
+                        {{ form.password(class="form-control", id=form.password.id, required=true, aria_describedby="passwordHelp") }}
+                        <div id="passwordHelp" class="form-text">Minimaal 6 tekens</div>
+                        {% for error in form.password.errors %}
+                            <div class="text-danger">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="{{ form.role.id }}" class="form-label">Rol</label>
+                        {{ form.role(class="form-select", id=form.role.id, required=true, aria_describedby="roleHelp") }}
+                        <div id="roleHelp" class="form-text">
+                            <span class="d-block"><strong>admin:</strong> volledige toegang</span>
+                            <span class="d-block"><strong>editor:</strong> kan stations beheren</span>
+                            <span class="d-block"><strong>listener:</strong> alleen opnames bekijken</span>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid">
+                        {{ form.submit(class="btn btn-primary") }}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Users list -->
+    <div class="col-lg-8">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <i class="fas fa-users me-2"></i>Gebruikers
+            </div>
+            <div class="card-body">
+                {% if users %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Gebruikersnaam</th>
+                                    <th scope="col">Rol</th>
+                                    <th scope="col">Acties</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in users %}
+                                    <tr>
+                                        <td>{{ user.username }}</td>
+                                        <td>
+                                            <span class="badge {% if user.role == 'admin' %}bg-danger{% elif user.role == 'editor' %}bg-warning text-dark{% else %}bg-info{% endif %}">
+                                                {{ user.role }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {% if user.username != current_user.username %}
+                                                <a href="{{ url_for('auth.user_management', delete=user.username) }}" 
+                                                   class="btn btn-sm btn-danger"
+                                                   onclick="return confirm('Weet je zeker dat je deze gebruiker wilt verwijderen?');"
+                                                   aria-label="Verwijder gebruiker {{ user.username }}">
+                                                    <i class="fas fa-trash"></i>
+                                                </a>
+                                            {% else %}
+                                                <span class="text-muted">Huidige gebruiker</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>Geen gebruikers gevonden.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Back to admin -->
+<div class="mt-4">
+    <a href="{{ url_for('admin') }}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left me-1"></i>Terug naar Beheer
+    </a>
+</div>
+{% endblock %}

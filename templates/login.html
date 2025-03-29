@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <i class="fas fa-sign-in-alt me-2"></i>Inloggen Radiologger
+            </div>
+            <div class="card-body">
+                <form method="post" action="{{ url_for('auth.login') }}" aria-label="Login formulier">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-3">
+                        <label for="{{ form.username.id }}" class="form-label">Gebruikersnaam</label>
+                        {{ form.username(class="form-control", id=form.username.id, required=true, autocomplete="username", aria_describedby="usernameHelp") }}
+                        <div id="usernameHelp" class="form-text">Voer uw gebruikersnaam in.</div>
+                        {% for error in form.username.errors %}
+                            <div class="text-danger">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="{{ form.password.id }}" class="form-label">Wachtwoord</label>
+                        {{ form.password(class="form-control", id=form.password.id, required=true, autocomplete="current-password", aria_describedby="passwordHelp") }}
+                        <div id="passwordHelp" class="form-text">Voer uw wachtwoord in.</div>
+                        {% for error in form.password.errors %}
+                            <div class="text-danger">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="mb-3 form-check">
+                        {{ form.remember_me(class="form-check-input", id=form.remember_me.id) }}
+                        <label class="form-check-label" for="{{ form.remember_me.id }}">Onthoud mij (7 dagen)</label>
+                    </div>
+                    
+                    <div class="d-grid">
+                        {{ form.submit(class="btn btn-primary") }}
+                    </div>
+                </form>
+            </div>
+            <div class="card-footer text-muted text-center">
+                <small>Radiologger - Beveiligde toegang</small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

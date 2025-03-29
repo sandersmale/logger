@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card shadow mb-4">
+    <div class="card-header bg-primary text-white">
+        <i class="fas fa-server me-2"></i>Systeeminformatie
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <i class="fas fa-cogs me-2"></i>Applicatie configuratie
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span>Recordings directory:</span>
+                                <code>{{ info.recordings_dir }}</code>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span>Logs directory:</span>
+                                <code>{{ info.logs_dir }}</code>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span>ffmpeg path:</span>
+                                <code>{{ info.ffmpeg_path }}</code>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span>S3 bucket:</span>
+                                <code>{{ info.s3_bucket }}</code>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span>S3 endpoint:</span>
+                                <code>{{ info.s3_endpoint }}</code>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span>Database URI:</span>
+                                <code>{{ info.db_uri }}</code>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <i class="fas fa-hdd me-2"></i>Systeeminformatie
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span>Python versie:</span>
+                                <code>{{ info.python_version }}</code>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span>Lokale tijd:</span>
+                                <code>{{ info.local_time }}</code>
+                            </li>
+                            {% if 'disk_total_gb' in info %}
+                            <li class="list-group-item">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span>Schijfruimte:</span>
+                                    <span>{{ info.disk_free_gb }} GB vrij van {{ info.disk_total_gb }} GB</span>
+                                </div>
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar {% if info.disk_used_percent > 90 %}bg-danger{% elif info.disk_used_percent > 70 %}bg-warning{% else %}bg-success{% endif %}" 
+                                         role="progressbar" 
+                                         style="width: {{ info.disk_used_percent }}%;" 
+                                         aria-valuenow="{{ info.disk_used_percent }}" 
+                                         aria-valuemin="0" 
+                                         aria-valuemax="100">
+                                        {{ info.disk_used_percent }}%
+                                    </div>
+                                </div>
+                            </li>
+                            {% elif 'disk_space_error' in info %}
+                            <li class="list-group-item text-danger">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                Fout bij ophalen schijfruimte: {{ info.disk_space_error }}
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Active recordings -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fas fa-play-circle me-2"></i>Actieve opnames
+            </div>
+            <div class="card-body">
+                <div id="activeRecordings">
+                    <div class="text-center p-3">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Laden...</span>
+                        </div>
+                        <p class="mt-2">Actieve opnames worden geladen...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="d-flex justify-content-between">
+    <a href="{{ url_for('admin') }}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left me-1"></i>Terug naar Beheer
+    </a>
+    
+    <button id="refreshBtn" class="btn btn-primary">
+        <i class="fas fa-sync me-1"></i>Vernieuwen
+    </button>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Function to get active recordings
+        function getActiveRecordings() {
+            fetch('/api/active_recordings')
+                .then(response => response.json())
+                .then(data => {
+                    const container = document.getElementById('activeRecordings');
+                    
+                    if (data.recordings && data.recordings.length > 0) {
+                        let html = '<div class="table-responsive"><table class="table table-striped">';
+                        html += '<thead><tr><th>PID</th><th>Station</th><th>Output</th><th>URL</th></tr></thead><tbody>';
+                        
+                        data.recordings.forEach(rec => {
+                            html += `<tr>
+                                <td>${rec.pid}</td>
+                                <td>${rec.station}</td>
+                                <td>${rec.output}</td>
+                                <td><code>${rec.url}</code></td>
+                            </tr>`;
+                        });
+                        
+                        html += '</tbody></table></div>';
+                        container.innerHTML = html;
+                    } else {
+                        container.innerHTML = '<div class="alert alert-info">Geen actieve opnames gevonden.</div>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching active recordings:', error);
+                    document.getElementById('activeRecordings').innerHTML = 
+                        '<div class="alert alert-danger">Fout bij het ophalen van actieve opnames.</div>';
+                });
+        }
+        
+        // Initial load
+        getActiveRecordings();
+        
+        // Refresh button
+        document.getElementById('refreshBtn').addEventListener('click', function() {
+            location.reload();
+        });
+        
+        // Auto-refresh every 30 seconds
+        setInterval(getActiveRecordings, 30000);
+    });
+</script>
+{% endblock %}

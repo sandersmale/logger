@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block head %}
+<style>
+    .date-nav {
+        overflow-x: auto;
+        white-space: nowrap;
+        padding-bottom: 10px;
+    }
+    .date-nav .btn {
+        margin-right: 5px;
+    }
+    .recording-list {
+        margin-top: 20px;
+    }
+    .hour-badge {
+        min-width: 50px;
+        text-align: center;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Date navigation -->
+<div class="card mb-4 shadow">
+    <div class="card-header bg-primary text-white">
+        <i class="fas fa-calendar-alt me-2"></i>Selecteer datum
+    </div>
+    <div class="card-body">
+        <div class="date-nav" role="toolbar" aria-label="Datum navigatie">
+            {% for day in date_nav %}
+                <a href="{{ url_for('player.list_recordings', date=day.formatted, station=selected_station) }}" 
+                   class="btn {% if day.date == selected_date %}btn-primary{% else %}btn-outline-secondary{% endif %}"
+                   aria-pressed="{% if day.date == selected_date %}true{% else %}false{% endif %}">
+                    {{ day.display }}
+                </a>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Station filter -->
+<div class="card mb-4 shadow">
+    <div class="card-header bg-primary text-white">
+        <i class="fas fa-broadcast-tower me-2"></i>Selecteer station
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="stationSelect" class="form-label">Station:</label>
+                    <select id="stationSelect" class="form-select" aria-label="Station selecteren">
+                        <option value="all" {% if selected_station == 'all' %}selected{% endif %}>Alle stations</option>
+                        <option value="dennis" {% if selected_station == 'dennis' %}selected{% endif %}>Dennis stations</option>
+                        <optgroup label="Lokale stations">
+                            {% for station in stations %}
+                                <option value="{{ station.id }}" {% if selected_station == station.id|string %}selected{% endif %}>
+                                    {{ station.name }}
+                                </option>
+                            {% endfor %}
+                        </optgroup>
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="d-flex align-items-end h-100">
+                    <button id="applyFilter" class="btn btn-primary">
+                        <i class="fas fa-filter me-1"></i>Filter toepassen
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recordings list -->
+<div class="card shadow">
+    <div class="card-header bg-primary text-white">
+        <i class="fas fa-play-circle me-2"></i>Opnames voor {{ selected_date.strftime('%d-%m-%Y') }}
+    </div>
+    <div class="card-body">
+        <!-- Local recordings -->
+        {% if recordings %}
+            <h5 class="mb-3">Lokale opnames</h5>
+            <div class="list-group mb-4">
+                {% for recording in recordings %}
+                    <a href="{{ url_for('player.player', cloudpath='opnames/' + recording.station.name + '/' + recording.date|string + '/' + recording.hour) }}" 
+                       class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="badge bg-secondary hour-badge me-2">{{ recording.hour }}:00</span>
+                            <span>{{ recording.station.name }}</span>
+                            {% if recording.program_title %}
+                                <span class="text-muted ms-2">- {{ recording.program_title }}</span>
+                            {% endif %}
+                        </div>
+                        <span class="badge bg-primary rounded-pill">
+                            <i class="fas fa-play"></i>
+                        </span>
+                    </a>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <!-- Dennis recordings -->
+        {% if dennis_recordings %}
+            <h5 class="mb-3">Dennis' opnames</h5>
+            <div class="list-group">
+                {% for recording in dennis_recordings %}
+                    <a href="{{ url_for('player.player', cloudpath='dennis/' + recording.station.folder + '/' + recording.date|string + '/' + recording.hour) }}" 
+                       class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="badge bg-secondary hour-badge me-2">{{ recording.hour }}:00</span>
+                            <span>{{ recording.station.name }}</span>
+                        </div>
+                        <span class="badge bg-primary rounded-pill">
+                            <i class="fas fa-play"></i>
+                        </span>
+                    </a>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {% if not recordings and not dennis_recordings %}
+            <div class="alert alert-info" role="alert">
+                <i class="fas fa-info-circle me-2"></i>Geen opnames gevonden voor deze datum en/of station.
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const stationSelect = document.getElementById('stationSelect');
+        const applyFilterBtn = document.getElementById('applyFilter');
+        
+        applyFilterBtn.addEventListener('click', function() {
+            const selectedDate = '{{ selected_date }}';
+            const selectedStation = stationSelect.value;
+            
+            window.location.href = "{{ url_for('player.list_recordings') }}?date=" + selectedDate + "&station=" + selectedStation;
+        });
+        
+        // Allow pressing Enter in the select to apply filter
+        stationSelect.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                applyFilterBtn.click();
+            }
+        });
+    });
+</script>
+{% endblock %}
