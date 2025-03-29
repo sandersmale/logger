@@ -20,16 +20,13 @@ ssh root@68.183.3.122
 
 Vervang `68.183.3.122` door het IP-adres van je eigen droplet.
 
-## Stap 3: Maak een tijdelijke map en ga er naartoe
+## Stap 3: Download het installatiescript
 ```bash
-# Maak de map aan
-mkdir -p /tmp/radiologger
-
-# Ga naar de map
-cd /tmp/radiologger
+# Maak een tijdelijke map, ga er naartoe
+mkdir -p /tmp/radiologger && cd /tmp/radiologger
 ```
 
-## Stap 4: Download het installatiescript
+## Stap 4: Maak het script uitvoerbaar
 ```bash
 # Download het script
 wget https://raw.githubusercontent.com/sandersmale/logger/main/install.sh
