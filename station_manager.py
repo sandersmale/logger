@@ -139,14 +139,22 @@ def delete_station(station_id):
         return redirect(url_for('station.manage_stations', delete_station=station_id, recording_count=recordings_count))
     
     try:
+        # Start transaction
+        db.session.begin_nested()
+        
         # Stop any active recordings
         stop_recording(station_id)
         
-        # Delete recordings
+        # Delete all scheduled jobs for this station
+        ScheduledJob.query.filter_by(station_id=station_id).delete()
+        
+        # Delete all recordings for this station
         Recording.query.filter_by(station_id=station_id).delete()
         
-        # Delete station
+        # Delete the station
         db.session.delete(station)
+        
+        # Commit the transaction
         db.session.commit()
         flash(f'Station "{station_name}" succesvol verwijderd', 'success')
     except Exception as e:
