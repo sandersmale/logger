@@ -64,7 +64,7 @@ def start_scheduler(scheduler_instance):
     )
 
 def prep_for_recording():
-    """Check if the system is ready for recording"""
+    """Check if the system is ready for recording and start recordings if needed"""
     logger.info("🔄 PREP-modus gestart")
     
     # Check disk space
@@ -88,6 +88,14 @@ def prep_for_recording():
     except Exception as e:
         logger.error(f"⚠️ ffmpeg test exception: {e}")
         return {'status': 'error', 'message': f'ffmpeg test exception: {e}'}
+    
+    # Start scheduled and always-on recordings immediately after startup
+    logger.info("🚀 Starten van geplande en altijd-aan opnames bij eerste opstart")
+    try:
+        # Roep start_scheduled_recordings aan om direct te beginnen met opnemen
+        start_scheduled_recordings()
+    except Exception as e:
+        logger.error(f"⚠️ Fout bij starten opnames: {e}")
     
     logger.info("✅ PREP voltooid")
     return {'status': 'ok', 'message': 'PREP voltooid'}
