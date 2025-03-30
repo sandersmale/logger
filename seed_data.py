@@ -50,52 +50,35 @@ def seed_initial_data(use_default_stations=False):
             stations_to_use = default_stations
             print("Using imported stations from old DB...")
         else:
-            # Use example stations
-            stations_to_use = [
-                {
-                    'name': 'NPO Radio 1',
-                    'recording_url': 'https://icecast.omroep.nl/radio1-bb-mp3',
-                    'always_on': True,
-                    'display_order': 10
-                },
-                {
-                    'name': 'NPO Radio 2',
-                    'recording_url': 'https://icecast.omroep.nl/radio2-bb-mp3',
-                    'always_on': False,
-                    'display_order': 20,
-                    'schedule': {
-                        'start_date': datetime.now().date(),
-                        'start_hour': 8,
-                        'end_date': (datetime.now() + timedelta(days=7)).date(),
-                        'end_hour': 18,
-                        'reason': 'Top 2000'
-                    }
-                },
-                {
-                    'name': 'NPO 3FM',
-                    'recording_url': 'https://icecast.omroep.nl/3fm-bb-mp3',
-                    'always_on': False,
-                    'display_order': 30
-                },
-                {
-                    'name': 'NPO Radio 4',
-                    'recording_url': 'https://icecast.omroep.nl/radio4-bb-mp3',
-                    'always_on': False,
-                    'display_order': 40
-                },
-                {
-                    'name': 'NPO Radio 5',
-                    'recording_url': 'https://icecast.omroep.nl/radio5-bb-mp3',
-                    'always_on': False,
-                    'display_order': 50
-                },
-                {
-                    'name': 'omroep land van cuijk',
-                    'recording_url': 'https://stream.omroeplvc.nl:8443/stream',
-                    'always_on': False,
-                    'display_order': 60
+            # Gebruik alle echte stations uit default_stations.json
+            import json
+            with open('default_stations.json', 'r') as f:
+                default_stations_data = json.load(f)
+            
+            # Convert from default_stations.json format to our seed format
+            stations_to_use = []
+            for idx, station in enumerate(default_stations_data):
+                station_data = {
+                    'name': station['name'],
+                    'recording_url': station['recording_url'],
+                    'always_on': bool(station['always_on']),
+                    'display_order': idx * 10  # 0, 10, 20, etc.
                 }
-            ]
+                
+                # Add schedule if present
+                if station['schedule_start_date'] and station['schedule_start_hour'] and \
+                   station['schedule_end_date'] and station['schedule_end_hour']:
+                    station_data['schedule'] = {
+                        'start_date': datetime.strptime(station['schedule_start_date'], '%Y-%m-%d').date() 
+                                      if isinstance(station['schedule_start_date'], str) else station['schedule_start_date'],
+                        'start_hour': station['schedule_start_hour'],
+                        'end_date': datetime.strptime(station['schedule_end_date'], '%Y-%m-%d').date() 
+                                   if isinstance(station['schedule_end_date'], str) else station['schedule_end_date'],
+                        'end_hour': station['schedule_end_hour'],
+                        'reason': station.get('record_reason', 'Geplande opname')
+                    }
+                
+                stations_to_use.append(station_data)
             print("Using default example stations...")
         
         # Add the selected stations to the database
