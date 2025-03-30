@@ -1,10 +1,12 @@
 from flask import render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
 from app import app, db
-from models import Station, Recording, DennisStation
+from models import Station, Recording, DennisStation, User
 from auth import admin_required, editor_required
-from forms import StationForm
+from forms import StationForm, SetupForm
+from werkzeug.security import generate_password_hash
 import os
+from dotenv import load_dotenv
 import sys
 import subprocess
 import psutil
@@ -20,7 +22,14 @@ def inject_now():
 
 @app.route('/')
 def index():
-    """Homepage - toont lijst met opnames met uitklapbaar menu"""
+    """Homepage - controleert setup en stuurt door naar de juiste pagina"""
+    # Controleer of er gebruikers zijn (setup is voltooid)
+    user_count = User.query.count()
+    if user_count == 0:
+        # Eerste keer setup nodig
+        return redirect(url_for('setup'))
+    
+    # Normale flow als setup voltooid is
     if not current_user.is_authenticated:
         return redirect(url_for('auth.login'))
     
@@ -208,6 +217,86 @@ def health_check():
 def not_found_error(error):
     return render_template('error.html', title='Pagina Niet Gevonden', 
                           error_code=404, error_message='De opgevraagde pagina kon niet worden gevonden.'), 404
+
+@app.route('/setup', methods=['GET', 'POST'])
+def setup():
+    """Eerste keer setup-pagina voor het aanmaken van admin gebruiker en configureren van Wasabi"""
+    # Controleer of er al gebruikers zijn
+    user_count = User.query.count()
+    if user_count > 0:
+        flash('Setup is al voltooid. Er zijn al gebruikers aangemaakt.', 'info')
+        return redirect(url_for('index'))
+    
+    form = SetupForm()
+    if form.validate_on_submit():
+        try:
+            # Maak de admin gebruiker aan
+            admin_user = User(
+                username=form.admin_username.data,
+                role='admin'
+            )
+            admin_user.set_password(form.admin_password.data)
+            db.session.add(admin_user)
+            
+            # Update de .env file met de Wasabi configuratie
+            env_path = '.env'
+            if os.path.exists(env_path):
+                with open(env_path, 'r') as file:
+                    env_lines = file.readlines()
+                
+                # Bijwerken van Wasabi configuratie
+                wasabi_lines = {
+                    'WASABI_ACCESS_KEY': form.wasabi_access_key.data,
+                    'WASABI_SECRET_KEY': form.wasabi_secret_key.data,
+                    'WASABI_BUCKET': form.wasabi_bucket.data,
+                    'WASABI_REGION': form.wasabi_region.data,
+                    'WASABI_ENDPOINT_URL': f'https://s3.{form.wasabi_region.data}.wasabisys.com'
+                }
+                
+                # Update bestaande regels of voeg nieuwe toe
+                updated_lines = []
+                for line in env_lines:
+                    key = line.split('=')[0].strip() if '=' in line else None
+                    if key in wasabi_lines:
+                        updated_lines.append(f"{key}={wasabi_lines[key]}\n")
+                        wasabi_lines.pop(key)
+                    else:
+                        updated_lines.append(line)
+                
+                # Voeg eventuele ontbrekende Wasabi-configuratie toe
+                for key, value in wasabi_lines.items():
+                    updated_lines.append(f"{key}={value}\n")
+                
+                # Schrijf terug naar .env bestand
+                with open(env_path, 'w') as file:
+                    file.writelines(updated_lines)
+                
+                # Update app config met nieuwe waarden
+                app.config['WASABI_ACCESS_KEY'] = form.wasabi_access_key.data
+                app.config['WASABI_SECRET_KEY'] = form.wasabi_secret_key.data
+                app.config['WASABI_BUCKET'] = form.wasabi_bucket.data
+                app.config['WASABI_REGION'] = form.wasabi_region.data
+                app.config['WASABI_ENDPOINT_URL'] = f'https://s3.{form.wasabi_region.data}.wasabisys.com'
+                
+                # S3 aliassen ook bijwerken
+                app.config['S3_ACCESS_KEY'] = form.wasabi_access_key.data
+                app.config['S3_SECRET_KEY'] = form.wasabi_secret_key.data
+                app.config['S3_BUCKET'] = form.wasabi_bucket.data
+                app.config['S3_REGION'] = form.wasabi_region.data
+                app.config['S3_ENDPOINT'] = f'https://s3.{form.wasabi_region.data}.wasabisys.com'
+            
+            # Commit wijzigingen naar database
+            db.session.commit()
+            
+            flash('Setup succesvol voltooid! Je kunt nu inloggen met je administrator account.', 'success')
+            return render_template('setup.html', title='Radiologger Setup', form=form, success=True)
+        
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Setup error: {e}")
+            flash(f'Er is een fout opgetreden bij de setup: {str(e)}', 'danger')
+    
+    return render_template('setup.html', title='Radiologger Setup', form=form, success=False)
 
 @app.errorhandler(500)
 def internal_error(error):

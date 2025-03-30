@@ -20,6 +20,35 @@ debug_log() {
   fi
 }
 
+# Functie om te vragen of uninstall uitgevoerd moet worden bij fouten
+handle_install_error() {
+  local error_msg="$1"
+  local error_code="$2"
+  
+  echo "💥 FOUT TIJDENS INSTALLATIE: $error_msg (code: $error_code)"
+  echo ""
+  echo "De installatie is niet volledig gelukt. Je kunt:"
+  echo "1. Het uninstall script uitvoeren om alle wijzigingen ongedaan te maken"
+  echo "2. Handmatig proberen het probleem op te lossen"
+  echo ""
+  
+  if [ -f "uninstall.sh" ]; then
+    read -p "Wil je het uninstall script uitvoeren om opnieuw te beginnen? (j/n): " run_uninstall
+    if [[ "$run_uninstall" =~ ^[jJ]$ ]]; then
+      echo "Uninstall script uitvoeren..."
+      chmod +x uninstall.sh
+      bash uninstall.sh --force
+      exit 1
+    fi
+  else
+    echo "Let op: uninstall.sh script niet gevonden!"
+    echo "Download het script handmatig met: wget -O uninstall.sh https://raw.githubusercontent.com/sandersmale/logger/main/uninstall.sh"
+  fi
+  
+  echo "Installatie afgebroken. Zie $DEBUG_LOG voor meer details."
+  exit $error_code
+}
+
 # Functie voor het uitvoeren van commando's met debug logging
 run_cmd() {
   local cmd="$1"
@@ -71,18 +100,19 @@ fi
 
 # Controleer internetverbinding
 if ! ping -c 1 google.com >/dev/null 2>&1; then
-    echo "FOUT: Geen internetverbinding gevonden"
-    exit 1
+    handle_install_error "Geen internetverbinding gevonden" 1
 fi
 
 # Controleer beschikbare schijfruimte (minimaal 1GB)
 available_space=$(df -BG / | awk 'NR==2 {print $4}' | sed 's/G//')
 if [ "$available_space" -lt 1 ]; then
-    echo "FOUT: Onvoldoende schijfruimte beschikbaar (minimaal 1GB nodig)"
-    exit 1
+    handle_install_error "Onvoldoende schijfruimte beschikbaar (minimaal 1GB nodig)" 1
 fi
 
-set -e  # Stop bij fouten
+# Gebruik trap om fouten op te vangen in plaats van set -e
+# Dit zorgt ervoor dat onze eigen foutafhandeling kan werken
+trap 'last_command=$current_command; current_command=$BASH_COMMAND' DEBUG
+trap 'exit_code=$?; if [ $exit_code -ne 0 ]; then echo "FOUT: \"${last_command}\" is mislukt met exit code $exit_code."; handle_install_error "Installatie mislukt op commando: ${last_command}" $exit_code; fi' EXIT
 
 # Controleer of het script als root wordt uitgevoerd
 if [[ $EUID -ne 0 ]]; then
@@ -102,7 +132,7 @@ echo "3. Radiologger gebruiker aanmaken en mapstructuur opzetten"
 echo "4. Python virtuele omgeving en dependencies installeren"
 echo "5. Systemd service instellen"
 echo "6. Nginx configureren"
-echo "7. Optioneel: SSL certificaat genereren via Let's Encrypt"
+echo "7. SSL certificaat genereren via Let's Encrypt"
 echo ""
 
 # Configureer algemene installatie-instellingen
@@ -111,34 +141,29 @@ export UCF_FORCE_CONFFOLD=1  # Behoud bestaande configuratiebestanden
 export NEEDRESTART_MODE=a    # Automatisch herstarten van services
 export NEEDRESTART_SUSPEND=1 # Onderdruk needrestart prompts
 
-# Vraag ALLE benodigde configuratiegegevens zodat de installatie zonder onderbrekingen kan verlopen
+# Vraag MINIMALE benodigde configuratiegegevens zodat de installatie zonder onderbrekingen kan verlopen
 echo "Voor de installatie zijn de volgende gegevens nodig:"
 echo "1. PostgreSQL database gebruikerswachtwoord"
-echo "2. Wasabi cloud storage gegevens"
-echo "3. Server- en installatieconfiguratie"
+echo "2. Server domeinnaam voor Nginx"
+echo "3. E-mailadres voor Let's Encrypt (SSL certificaat)"
 echo ""
 
 # Database configuratie
 read -p "Kies een wachtwoord voor de PostgreSQL radiologger gebruiker: " db_password
 
-# Wasabi cloud storage
-read -p "Voer de Wasabi access key in: " wasabi_access
-read -p "Voer de Wasabi secret key in: " wasabi_secret
-read -p "Voer de Wasabi bucket naam in: " wasabi_bucket
-read -p "Voer de Wasabi regio in (standaard: eu-central-1): " wasabi_region
-wasabi_region=${wasabi_region:-eu-central-1}
-
 # Server configuratie
 read -p "Server domeinnaam voor Nginx (standaard: logger.pilotradio.nl): " server_domain
 server_domain=${server_domain:-logger.pilotradio.nl}
 
-# SSL configuratie
-read -p "SSL certificaat installeren? (j/n, standaard: j): " ssl_response
-ssl_response=${ssl_response:-j}
+# E-mail voor Let's Encrypt
+read -p "E-mailadres voor Let's Encrypt notificaties: " email_address
 
 # Radiostations configuratie
 read -p "Standaard radiostations importeren? (j/n, standaard: j): " use_default_stations
 use_default_stations=${use_default_stations:-j}
+
+# SSL is altijd ingeschakeld
+ssl_response="j"
 
 echo "Alle benodigde gegevens ontvangen. De installatie zal nu zonder verdere onderbrekingen verlopen..."
 echo ""
@@ -236,7 +261,9 @@ chown -R radiologger:radiologger /opt/radiologger
 
 echo ""
 echo "Stap 4: Python virtuele omgeving en dependencies installeren..."
-cd /opt/radiologger || exit 1
+if ! cd /opt/radiologger; then
+    handle_install_error "Kan niet naar /opt/radiologger directory gaan" 1
+fi
 
 # Maak een nieuwe virtuele omgeving
 python3 -m venv venv
@@ -301,12 +328,12 @@ DENNIS_API_URL=$dennis_api
 # Systeem configuratie
 FFMPEG_PATH=/usr/bin/ffmpeg
 
-# S3 storage configuratie
-WASABI_ACCESS_KEY=$wasabi_access
-WASABI_SECRET_KEY=$wasabi_secret
-WASABI_BUCKET=$wasabi_bucket
-WASABI_REGION=$wasabi_region
-WASABI_ENDPOINT_URL=https://s3.$wasabi_region.wasabisys.com
+# S3 storage configuratie - zal later in de setup worden geconfigureerd door de gebruiker
+WASABI_ACCESS_KEY=
+WASABI_SECRET_KEY=
+WASABI_BUCKET=
+WASABI_REGION=eu-central-1
+WASABI_ENDPOINT_URL=https://s3.eu-central-1.wasabisys.com
 EOL
 
 # Rechten instellen
@@ -316,7 +343,9 @@ echo "✅ Rechten voor .env bestand correct ingesteld"
 
 echo ""
 echo "Stap 6: Database initialiseren en vullen met basisgegevens..."
-cd /opt/radiologger || exit 1
+if ! cd /opt/radiologger; then
+    handle_install_error "Kan niet naar /opt/radiologger directory gaan" 1
+fi
 
 # Gebruik de eerder opgegeven keuze voor standaard stations
 use_default_flag=""
@@ -1363,7 +1392,9 @@ EOL
     # Voer het script uit met de radiologger gebruiker
     debug_log "Voer init_db.py uit met verbose modus" true
     run_cmd "cd /opt/radiologger" "directory wisselen" false
-    run_cmd "sudo -u radiologger bash -c 'cd /opt/radiologger && PYTHONPATH=/opt/radiologger /opt/radiologger/venv/bin/python -v /opt/radiologger/init_db.py'" "init_db.py uitvoeren" true
+    if ! run_cmd "sudo -u radiologger bash -c 'cd /opt/radiologger && PYTHONPATH=/opt/radiologger /opt/radiologger/venv/bin/python -v /opt/radiologger/init_db.py'" "init_db.py uitvoeren" true; then
+        handle_install_error "Database initialisatie via init_db.py mislukt" 1
+    fi
     
     # Verwijder het tijdelijke script
     rm -f /opt/radiologger/init_db.py
@@ -1410,7 +1441,9 @@ EOL
     # Voer het script uit met de radiologger gebruiker
     debug_log "Voer create_users.py uit met verbose modus" true
     run_cmd "cd /opt/radiologger" "directory wisselen" false
-    run_cmd "sudo -u radiologger bash -c 'cd /opt/radiologger && PYTHONPATH=/opt/radiologger /opt/radiologger/venv/bin/python -v /opt/radiologger/create_users.py'" "create_users.py uitvoeren" true
+    if ! run_cmd "sudo -u radiologger bash -c 'cd /opt/radiologger && PYTHONPATH=/opt/radiologger /opt/radiologger/venv/bin/python -v /opt/radiologger/create_users.py'" "create_users.py uitvoeren" true; then
+        handle_install_error "Aanmaken gebruikers via create_users.py mislukt" 1
+    fi
     
     # Verwijder het tijdelijke script
     rm -f /opt/radiologger/create_users.py
@@ -1495,13 +1528,9 @@ systemctl restart nginx
 
 echo ""
 echo "Stap 9: SSL certificaat beheren..."
-if [[ "$ssl_response" =~ ^[jJ]$ ]]; then
-    echo "SSL certificaat wordt geïnstalleerd voor $server_domain..."
-    certbot --nginx -d "$server_domain" --non-interactive --agree-tos --redirect
-    echo "SSL certificaat voor $server_domain geïnstalleerd!"
-else
-    echo "SSL certificaat installatie overgeslagen op verzoek van gebruiker."
-fi
+echo "SSL certificaat wordt geïnstalleerd voor $server_domain..."
+certbot --nginx -d "$server_domain" --non-interactive --agree-tos --redirect --email "$email_address"
+echo "SSL certificaat voor $server_domain geïnstalleerd!"
 
 echo ""
 echo "Stap 10: Cron-taken instellen voor onderhoud..."
@@ -1548,16 +1577,11 @@ echo "Omroep LvC download taak instellen (8 minuten na het uur)..."
 echo ""
 echo "====================================================================="
 echo "✅ Radiologger is succesvol geïnstalleerd!"
-if [[ "$ssl_response" =~ ^[jJ]$ ]]; then
-    echo "De applicatie draait nu op https://$server_domain"
-else
-    echo "De applicatie draait nu op http://$server_domain"
-fi
+echo "De applicatie draait nu op https://$server_domain"
 echo ""
-echo "Standaard inloggegevens:"
-echo "Admin: gebruikersnaam: admin, wachtwoord: radioadmin"
-echo "Editor: gebruikersnaam: editor, wachtwoord: radioeditor"
-echo "Luisteraar: gebruikersnaam: luisteraar, wachtwoord: radioluisteraar"
+echo "⚠️ BELANGRIJK: Bij het eerste bezoek aan https://$server_domain zul je:"
+echo "1. Een admin-account moeten aanmaken"
+echo "2. De Wasabi S3 cloud storage toegangsgegevens moeten configureren"
 echo ""
-echo "⚠️ BELANGRIJK: VERANDER DEZE WACHTWOORDEN DIRECT NA EERSTE INLOG!"
+echo "Volg de setup-instructies op het scherm voor een volledige configuratie."
 echo "====================================================================="

@@ -20,11 +20,17 @@ echo "3. PostgreSQL database verwijderen"
 echo "4. Radiologger gebruiker verwijderen"
 echo "5. Alle gemaakte mappen en bestanden verwijderen"
 echo ""
-echo "WAARSCHUWING: Dit proces kan niet ongedaan worden gemaakt!"
-read -p "Weet je zeker dat je wilt doorgaan? (j/n): " confirm
-if [[ ! "$confirm" =~ ^[jJ]$ ]]; then
-    echo "Uninstallatie geannuleerd."
-    exit 0
+# Check for non-interactive mode (flag --force of -f)
+if [[ "$1" == "--force" || "$1" == "-f" ]]; then
+    echo "Automatische uninstallatie wordt uitgevoerd zonder bevestiging..."
+    confirm="j"
+else
+    echo "WAARSCHUWING: Dit proces kan niet ongedaan worden gemaakt!"
+    read -p "Weet je zeker dat je wilt doorgaan? (j/n): " confirm
+    if [[ ! "$confirm" =~ ^[jJ]$ ]]; then
+        echo "Uninstallatie geannuleerd."
+        exit 0
+    fi
 fi
 
 # Stop en verwijder de systemd service

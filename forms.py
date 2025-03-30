@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, BooleanField, SelectField, DateField, IntegerField, TextAreaField, SubmitField, HiddenField
-from wtforms.validators import DataRequired, URL, Optional, NumberRange, Length, ValidationError
+from wtforms.validators import DataRequired, URL, Optional, NumberRange, Length, ValidationError, EqualTo
 import re
 from datetime import date
 
@@ -56,3 +56,15 @@ class DennisStationForm(FlaskForm):
 class TestStreamForm(FlaskForm):
     url = StringField('Stream URL', validators=[DataRequired(), URL()])
     submit = SubmitField('Test Stream')
+
+class SetupForm(FlaskForm):
+    admin_username = StringField('Administrator Gebruikersnaam', validators=[DataRequired(), Length(min=3, max=64)])
+    admin_password = PasswordField('Administrator Wachtwoord', validators=[DataRequired(), Length(min=6, max=128)])
+    admin_password_confirm = PasswordField('Bevestig Wachtwoord', validators=[DataRequired(), EqualTo('admin_password', message='Wachtwoorden moeten overeenkomen')])
+    
+    wasabi_access_key = StringField('Wasabi Access Key', validators=[DataRequired()])
+    wasabi_secret_key = StringField('Wasabi Secret Key', validators=[DataRequired()])
+    wasabi_bucket = StringField('Wasabi Bucket', validators=[DataRequired()])
+    wasabi_region = StringField('Wasabi Regio', validators=[DataRequired()], default='eu-central-1')
+    
+    submit = SubmitField('Setup Voltooien')

@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+
+{% block title %}Radiologger Initiële Setup{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="mb-0">Radiologger - Eerste Configuratie</h2>
+                </div>
+                <div class="card-body">
+                    {% if success %}
+                        <div class="alert alert-success" role="alert">
+                            <h4 class="alert-heading">Setup voltooid!</h4>
+                            <p>Je kunt nu <a href="{{ url_for('auth.login') }}" class="alert-link">inloggen</a> met de aangemaakte administrator account.</p>
+                        </div>
+                    {% else %}
+                        {% if error %}
+                            <div class="alert alert-danger" role="alert">
+                                {{ error }}
+                            </div>
+                        {% endif %}
+
+                        <form method="post" action="{{ url_for('setup') }}">
+                            {{ form.hidden_tag() }}
+
+                            <div class="mb-4">
+                                <h4>Admin Account</h4>
+                                <p>Maak een administrator account aan voor het beheren van Radiologger.</p>
+
+                                <div class="mb-3">
+                                    {{ form.admin_username.label(class="form-label") }}
+                                    {{ form.admin_username(class="form-control", placeholder="Administrator gebruikersnaam") }}
+                                    {% if form.admin_username.errors %}
+                                        <div class="text-danger">
+                                            {% for error in form.admin_username.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="mb-3">
+                                    {{ form.admin_password.label(class="form-label") }}
+                                    {{ form.admin_password(class="form-control", placeholder="Administrator wachtwoord") }}
+                                    {% if form.admin_password.errors %}
+                                        <div class="text-danger">
+                                            {% for error in form.admin_password.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="mb-3">
+                                    {{ form.admin_password_confirm.label(class="form-label") }}
+                                    {{ form.admin_password_confirm(class="form-control", placeholder="Bevestig wachtwoord") }}
+                                    {% if form.admin_password_confirm.errors %}
+                                        <div class="text-danger">
+                                            {% for error in form.admin_password_confirm.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <h4>Wasabi S3 Cloud Storage</h4>
+                                <p>Configureer Wasabi cloud storage voor het opslaan van de opnames.</p>
+
+                                <div class="mb-3">
+                                    {{ form.wasabi_access_key.label(class="form-label") }}
+                                    {{ form.wasabi_access_key(class="form-control", placeholder="Wasabi Access Key") }}
+                                    {% if form.wasabi_access_key.errors %}
+                                        <div class="text-danger">
+                                            {% for error in form.wasabi_access_key.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="mb-3">
+                                    {{ form.wasabi_secret_key.label(class="form-label") }}
+                                    {{ form.wasabi_secret_key(class="form-control", placeholder="Wasabi Secret Key") }}
+                                    {% if form.wasabi_secret_key.errors %}
+                                        <div class="text-danger">
+                                            {% for error in form.wasabi_secret_key.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="mb-3">
+                                    {{ form.wasabi_bucket.label(class="form-label") }}
+                                    {{ form.wasabi_bucket(class="form-control", placeholder="Wasabi Bucket Naam") }}
+                                    {% if form.wasabi_bucket.errors %}
+                                        <div class="text-danger">
+                                            {% for error in form.wasabi_bucket.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="mb-3">
+                                    {{ form.wasabi_region.label(class="form-label") }}
+                                    {{ form.wasabi_region(class="form-control", placeholder="Wasabi Regio (bijv. eu-central-1)") }}
+                                    {% if form.wasabi_region.errors %}
+                                        <div class="text-danger">
+                                            {% for error in form.wasabi_region.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="d-grid gap-2">
+                                {{ form.submit(class="btn btn-primary btn-lg") }}
+                            </div>
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
