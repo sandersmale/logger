@@ -7,13 +7,13 @@ Deze handleiding geeft je een simpele, stapsgewijze installatiemethode voor de R
 Eerst moeten we alle benodigde software installeren. Voer dit commando uit als root:
 
 ```bash
-sudo apt update && sudo apt install -y python3 python3-venv python3-pip ffmpeg nginx postgresql postgresql-contrib git curl wget build-essential libpq-dev
+sudo apt update && sudo apt install -y python3 python3-venv python3-pip ffmpeg apache2 libapache2-mod-proxy-html libapache2-mod-wsgi-py3 postgresql postgresql-contrib git curl wget build-essential libpq-dev
 ```
 
 Dit installeert:
 - Python en benodigde tools
 - ffmpeg (voor audio conversie)
-- nginx (webserver)
+- Apache (webserver, betrouwbaarder dan Nginx voor standaardinstallaties)
 - PostgreSQL (database)
 - Overige benodigde hulpprogramma's
 

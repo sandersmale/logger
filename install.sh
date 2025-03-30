@@ -198,9 +198,9 @@ if ! command -v ffmpeg &> /dev/null; then
     exit 1
 fi
 
-# Controleer of nginx aanwezig is
-if ! command -v nginx &> /dev/null; then
-    echo "⚠️ nginx niet geïnstalleerd! Installeer met: sudo apt install -y nginx"
+# Controleer of Apache aanwezig is (vervangen voor nginx)
+if ! command -v apache2 &> /dev/null; then
+    echo "⚠️ Apache niet geïnstalleerd! Installeer met: sudo apt install -y apache2 libapache2-mod-proxy-html libapache2-mod-wsgi-py3"
     exit 1
 fi
 
@@ -2047,53 +2047,52 @@ systemctl enable radiologger
 systemctl start radiologger
 
 echo ""
-echo "Stap 8: Nginx configureren voor $server_domain..."
-cat > /etc/nginx/sites-available/radiologger << EOL
-server {
-    listen 80;
-    server_name $server_domain;
+echo "Stap 8: Apache configureren voor $server_domain..."
 
-    access_log /var/log/nginx/radiologger_access.log;
-    error_log /var/log/nginx/radiologger_error.log;
+# Zorg dat de nodige Apache modules geactiveerd zijn
+a2enmod proxy proxy_http rewrite ssl headers
 
-    location / {
-        proxy_pass http://127.0.0.1:5000;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
-        
-        proxy_read_timeout 300s;
-        proxy_connect_timeout 300s;
-        proxy_send_timeout 300s;
-    }
+# Apache configuratiebestand aanmaken
+cat > /etc/apache2/sites-available/radiologger.conf << EOL
+<VirtualHost *:80>
+    ServerName $server_domain
+    ServerAdmin webmaster@localhost
+    DocumentRoot /var/www/html
+
+    ErrorLog \${APACHE_LOG_DIR}/radiologger_error.log
+    CustomLog \${APACHE_LOG_DIR}/radiologger_access.log combined
+
+    # Proxy naar Gunicorn
+    ProxyPass / http://127.0.0.1:5000/
+    ProxyPassReverse / http://127.0.0.1:5000/
     
-    client_max_body_size 100M;
+    # Headers instellen
+    RequestHeader set X-Forwarded-Proto "http"
+    RequestHeader set X-Forwarded-For %{REMOTE_ADDR}s
+    RequestHeader set Host %{HTTP_HOST}s
     
-    location /static/ {
-        alias /opt/radiologger/static/;
-        expires 30d;
-    }
+    # Static files en favicon
+    Alias /static/ /opt/radiologger/static/
+    <Directory /opt/radiologger/static>
+        Require all granted
+    </Directory>
     
-    location = /favicon.ico {
-        alias /opt/radiologger/static/favicon.ico;
-    }
-}
+    Alias /favicon.ico /opt/radiologger/static/favicon.ico
+</VirtualHost>
 EOL
 
-ln -s /etc/nginx/sites-available/radiologger /etc/nginx/sites-enabled/
-rm -f /etc/nginx/sites-enabled/default  # Verwijder default site
-nginx -t
-systemctl restart nginx
+# Enable site en disable default site
+a2ensite radiologger.conf
+a2dissite 000-default.conf
+
+# Configuratie testen
+apache2ctl -t
+systemctl restart apache2
 
 echo ""
 echo "Stap 9: SSL certificaat beheren..."
 echo "SSL certificaat wordt geïnstalleerd voor $server_domain..."
-certbot --nginx -d "$server_domain" --non-interactive --agree-tos --redirect --email "$email_address"
+certbot --apache -d "$server_domain" --non-interactive --agree-tos --redirect --email "$email_address"
 echo "SSL certificaat voor $server_domain geïnstalleerd!"
 
 echo ""
@@ -2156,10 +2155,10 @@ for script in /opt/radiologger/*.py; do
 done
 echo "✅ Python scripts executable gemaakt"
 
-# Fix nginx configuratie (indien aanwezig)
-if [ -f /etc/nginx/sites-available/radiologger ]; then
-  chmod 644 /etc/nginx/sites-available/radiologger
-  echo "✅ Nginx configuratie rechten gecorrigeerd"
+# Fix Apache configuratie (indien aanwezig)
+if [ -f /etc/apache2/sites-available/radiologger.conf ]; then
+  chmod 644 /etc/apache2/sites-available/radiologger.conf
+  echo "✅ Apache configuratie rechten gecorrigeerd"
 fi
 
 # Fix HOME directory voor de service
@@ -2194,7 +2193,7 @@ fi
 echo ""
 echo "✅ Alle rechten zijn gerepareerd!"
 echo "Herstart de Radiologger service met: sudo systemctl restart radiologger"
-echo "Herstart Nginx met: sudo systemctl restart nginx"
+echo "Herstart Apache met: sudo systemctl restart apache2"
 EOL
 
 # Maak het permissions script uitvoerbaar
