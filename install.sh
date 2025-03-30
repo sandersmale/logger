@@ -204,9 +204,11 @@ useradd -m -s /bin/bash radiologger 2>/dev/null || echo "Gebruiker bestaat al"
 mkdir -p /opt/radiologger
 mkdir -p /var/log/radiologger
 mkdir -p /var/lib/radiologger/recordings
+echo "✅ Map structuur aangemaakt"
 chown -R radiologger:radiologger /opt/radiologger
 chown -R radiologger:radiologger /var/log/radiologger
 chown -R radiologger:radiologger /var/lib/radiologger
+echo "✅ Map rechten ingesteld"
 
 echo ""
 echo "Stap 3b: Radiologger applicatiebestanden kopiëren..."
@@ -307,6 +309,7 @@ EOL
 # Rechten instellen
 chown radiologger:radiologger /opt/radiologger/.env
 chmod 600 /opt/radiologger/.env
+echo "✅ Rechten voor .env bestand correct ingesteld"
 
 echo ""
 echo "Stap 6: Database initialiseren en vullen met basisgegevens..."
@@ -518,6 +521,7 @@ EOL
 # Maak het script uitvoerbaar
 chmod +x /opt/radiologger/direct_db_setup.py
 chown radiologger:radiologger /opt/radiologger/direct_db_setup.py
+echo "✅ Direct database script rechten ingesteld"
 
 # Voer het direct SQL-script uit als failsafe
 echo "Direct SQL database setup starten..."
