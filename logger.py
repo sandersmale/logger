@@ -698,7 +698,7 @@ def resolve_stream_url(url):
 
 def generate_output_pattern(station_name):
     """Generate the output pattern for ffmpeg segmentation"""
-    # Format: /var/private/opnames/StationName/YYYY-MM-DD/%H.mp3
+    # Format: {RECORDINGS_DIR}/StationName/YYYY-MM-DD/%H.mp3
     
     # For 00:00, use today's date; for all other hours, use the date from 1 hour ago
     current_hour = datetime.now().hour

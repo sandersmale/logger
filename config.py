@@ -23,6 +23,7 @@ class Config:
     # Opname instellingen
     RECORDINGS_DIR = os.environ.get('RECORDINGS_DIR', 'recordings')
     RETENTION_DAYS = int(os.environ.get('RETENTION_DAYS', 30))
+    LOCAL_FILE_RETENTION = int(os.environ.get('LOCAL_FILE_RETENTION', 2))  # Uren voordat lokale bestanden worden verwijderd
     
     # Wasabi S3 instellingen
     WASABI_ACCESS_KEY = os.environ.get('WASABI_ACCESS_KEY')
@@ -38,8 +39,14 @@ class Config:
     S3_ACCESS_KEY = WASABI_ACCESS_KEY
     S3_SECRET_KEY = WASABI_SECRET_KEY
     
+    # Systeem instellingen
+    FFMPEG_PATH = os.environ.get('FFMPEG_PATH', '/usr/bin/ffmpeg')
+    
     # Omroep Land van Cuijk instellingen
     OMROEP_LVC_URL = os.environ.get('OMROEP_LVC_URL', 'https://gemist.omroeplvc.nl/')
+    
+    # Dennis API instellingen
+    DENNIS_API_URL = os.environ.get('DENNIS_API_URL', 'https://logger.dennishoogeveenmedia.nl/api/stations.json')
     
     # Zorg ervoor dat mappen bestaan
     @staticmethod

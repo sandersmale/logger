@@ -60,12 +60,15 @@ def get_running_recordings():
             url = url_match.group(1) if url_match else "Unknown"
             
             # Extract output path
-            output_match = re.search(r'(/var/private/opnames/[^\s]+)', command)
+            # Zoek naar het outputpad in het ffmpeg commando
+            recordings_dir = app.config.get('RECORDINGS_DIR', 'recordings')
+            output_match = re.search(fr'({re.escape(recordings_dir)}/[^\s]+)', command)
             output = output_match.group(1) if output_match else "Unknown"
             
             # Extract station name from output path
-            station_match = re.search(r'/opnames/([^/]+)/', output)
-            station = station_match.group(1) if station_match else "Unknown"
+            # Het outputpad zou er ongeveer zo uit moeten zien: recordings/stationname/date/hour.mp3
+            parts = output.split('/')
+            station = parts[1] if len(parts) > 2 else "Unknown"
             
             processes.append({
                 'pid': pid,

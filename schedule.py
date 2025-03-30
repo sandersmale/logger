@@ -150,7 +150,9 @@ def find_recording_process(stream_url):
                     command = parts[1]
                     
                     # Extract output path if available
-                    output_match = re.search(r'(/var/private/opnames/[^\s]+)', command)
+                    # Zoek naar het outputpad in het ffmpeg commando
+                    recordings_dir = app.config['RECORDINGS_DIR']
+                    output_match = re.search(fr'({re.escape(recordings_dir)}/[^\s]+)', command)
                     output_path = output_match.group(1) if output_match else None
                     
                     return {
@@ -649,7 +651,7 @@ def clean_logs():
 
 def generate_output_path(station_name):
     """Generate output path for ffmpeg recording"""
-    # Format: /var/private/opnames/StationName/YYYY-MM-DD/%H.mp3
+    # Format: {RECORDINGS_DIR}/StationName/YYYY-MM-DD/%H.mp3
     
     # For 00:00, use today's date; for all other hours, use date from 1 hour ago
     current_hour = datetime.now().hour

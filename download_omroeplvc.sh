@@ -17,10 +17,18 @@
 
 set -euo pipefail
 
-# Configuratie
-LOG_FILE="/var/log/radiologger/download_omroeplvc.log"
-LOCAL_BASE="/var/lib/radiologger/recordings/omroep land van cuijk"
-REMOTE_URL_BASE="https://gemist.omroeplvc.nl"
+# Configuratie - gebaseerd op radiologger configuratie
+# Als script via .env geladen wordt, gebruik dan de environment variabelen
+# Anders gebruik standaard paden
+LOG_DIR="${LOGS_DIR:-/var/log/radiologger}"
+RECORDINGS_DIR="${RECORDINGS_DIR:-/var/lib/radiologger/recordings}"
+LOG_FILE="${LOG_DIR}/download_omroeplvc.log"
+LOCAL_BASE="${RECORDINGS_DIR}/omroep land van cuijk"
+REMOTE_URL_BASE="${OMROEP_LVC_URL:-https://gemist.omroeplvc.nl}"
+
+# Zorg dat de directories bestaan
+mkdir -p "$LOG_DIR"
+mkdir -p "$LOCAL_BASE"
 
 # Functie voor logging (schrijft zowel naar STDOUT als naar het logbestand)
 log() {
