@@ -127,6 +127,7 @@ else
     echo "Bestaande stations worden behouden."
 fi
 
+cd /opt/radiologger
 sudo -u radiologger /opt/radiologger/venv/bin/flask db upgrade
 
 # Alleen stations importeren als de gebruiker dat wil
@@ -145,6 +146,7 @@ if [[ -n "$use_default_flag" ]]; then
         # Tenslotte de stations zelf verwijderen
         PGPASSWORD="$db_password" psql -h localhost -U radiologger -d radiologger -c "DELETE FROM station;"
         echo "Stations verwijderd. Nieuwe stations importeren..."
+        cd /opt/radiologger
         sudo -u radiologger /opt/radiologger/venv/bin/python seed_data.py $use_default_flag
     else
         echo "Import geannuleerd, bestaande stations behouden."

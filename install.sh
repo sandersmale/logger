@@ -297,6 +297,7 @@ except Exception as e:
 "
         if [ -f "seed_data.py" ]; then
             echo "Initialiseren van basisgegevens via seed_data.py..."
+            cd /opt/radiologger
             sudo -u radiologger /opt/radiologger/venv/bin/python seed_data.py $use_default_flag
         fi
     fi
@@ -321,6 +322,7 @@ except Exception as e:
     sys.exit(1)
 "
     # Vul de database met basisgegevens
+    cd /opt/radiologger
     sudo -u radiologger /opt/radiologger/venv/bin/python seed_data.py $use_default_flag
 else
     echo "Geen setup_db.py of seed_data.py gevonden. Initialiseer database basis tabellen..."
