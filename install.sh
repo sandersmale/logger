@@ -327,9 +327,51 @@ else
     echo "Voorbeeld stations worden gebruikt."
 fi
 
-# Maak een éénvoudig losstaand SQL-script dat DIRECT naar psql gaat
-# Deze methode gebruikt GEEN python imports, maar gaat rechtstreeks naar PostgreSQL
-cat > /opt/radiologger/setup_db.sql << 'EOL'
+# Maak een volledig zelfstandig SHELL script voor database setup 
+# Deze methode werkt zonder Python en direct via psql
+cat > /opt/radiologger/shell_db_setup.sh << 'EOL'
+#!/bin/bash
+# shell_db_setup.sh
+# Een volledig standalone shell script voor het opzetten van de database
+# zonder enige afhankelijkheid van Python of imports
+#
+# Dit script maakt direct de database aan met pure SQL via het psql commando
+# Het enige dat vereist is, is toegang tot een PostgreSQL installatie
+
+# Configuratie uit omgevingsvariabelen of defaultwaarden
+DB_USER=${DATABASE_USER:-"radiologger"}
+DB_PASSWORD=${DATABASE_PASSWORD:-"radiologgerpass"}
+DB_NAME=${DATABASE_NAME:-"radiologger"}
+DB_HOST=${DATABASE_HOST:-"localhost"}
+DB_PORT=${DATABASE_PORT:-"5432"}
+
+# Log bestand voor debug informatie
+LOG_FILE="/tmp/shell_db_setup.log"
+
+# Logging functie
+log_message() {
+  local timestamp=$(date "+%Y-%m-%d %H:%M:%S")
+  echo "[$timestamp] $1" | tee -a "$LOG_FILE"
+}
+
+# Maak een nieuw logbestand aan
+echo "Shell Database Setup Log - $(date)" > "$LOG_FILE"
+echo "-------------------------------------" >> "$LOG_FILE"
+
+log_message "Shell database setup script gestart"
+log_message "Gebruikt postgresql://$DB_USER:******@$DB_HOST:$DB_PORT/$DB_NAME"
+
+# Controleer of psql beschikbaar is
+if ! command -v psql &> /dev/null; then
+  log_message "❌ FOUT: psql commando niet gevonden. Installeer PostgreSQL client."
+  exit 1
+fi
+
+# Genereer het SQL script
+TMP_SQL_FILE=$(mktemp)
+chmod 600 "$TMP_SQL_FILE"
+
+cat > "$TMP_SQL_FILE" << 'EOSQL'
 -- Maak de user tabel aan
 CREATE TABLE IF NOT EXISTS "user" (
     id SERIAL PRIMARY KEY,
@@ -411,9 +453,52 @@ BEGIN
         VALUES ('luisteraar', 'pbkdf2:sha256:150000$66d6f30f0bef2c6b9622c93aa6906bbe5b3c5a87e0ef3acb5e9f55b468c83e90', 'listener');
     END IF;
 END $$;
+EOSQL
+
+# Voer het SQL script uit
+export PGPASSWORD="$DB_PASSWORD"
+log_message "🔄 Database tabellen en basisgegevens aanmaken..."
+
+if psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$TMP_SQL_FILE" >> "$LOG_FILE" 2>&1; then
+  log_message "✅ Database tabellen en basisgegevens succesvol aangemaakt!"
+  success=true
+else
+  log_message "❌ Fout bij aanmaken database tabellen. Controleer $LOG_FILE voor details."
+  
+  # Probeer als alternatief met postgres gebruiker als we root zijn
+  if [ "$(id -u)" -eq 0 ]; then
+    log_message "🔄 Proberen als postgres gebruiker..."
+    if sudo -u postgres psql -d "$DB_NAME" -f "$TMP_SQL_FILE" >> "$LOG_FILE" 2>&1; then
+      log_message "✅ Database tabellen en basisgegevens succesvol aangemaakt met postgres gebruiker!"
+      success=true
+    else
+      log_message "❌ Ook mislukt met postgres gebruiker. Zie $LOG_FILE voor details."
+      success=false
+    fi
+  else
+    success=false
+  fi
+fi
+
+# Ruim het tijdelijke bestand op
+rm -f "$TMP_SQL_FILE"
+
+if [ "$success" = true ]; then
+  log_message "✅ Database setup succesvol voltooid!"
+  exit 0
+else
+  log_message "❌ Database setup mislukt. Controleer het logbestand: $LOG_FILE"
+  cat "$LOG_FILE"
+  exit 1
+fi
 EOL
 
-# Maak een direct SQL-script voor database-initialisatie (failsafe methode)
+# Maak het shell script uitvoerbaar
+chmod +x /opt/radiologger/shell_db_setup.sh
+chown radiologger:radiologger /opt/radiologger/shell_db_setup.sh
+echo "✅ Shell database setup script rechten ingesteld"
+
+# Maak een fallback SQL-script voor database-initialisatie (failsafe methode)
 # Dit wordt alleen gebruikt als de directe SQL benadering faalt
 cat > /opt/radiologger/direct_db_setup.py << 'EOL'
 #!/usr/bin/env python3
@@ -625,9 +710,11 @@ DB_NAME=$(grep -oP '(?<=/)[^?]+' /opt/radiologger/.env || echo "radiologger")
 # Log de gegevens voor debugging (verwijder wachtwoord uit log)
 echo "Database gegevens: $DB_USER@$DB_HOST:$DB_PORT/$DB_NAME"
 
-# Voer het SQL-script direct uit als de postgres gebruiker (GEEN PYTHON NODIG)
-echo "Directe SQL-commando's uitvoeren naar PostgreSQL..."
-sudo -u postgres psql -d $DB_NAME -f /opt/radiologger/setup_db.sql
+# Voer het STANDALONE shell script uit voor databaseinitialisatie
+# Dit shell script gebruikt direct psql, zonder Python
+echo "Shell-based database setup starten..."
+chmod +x /opt/radiologger/shell_db_setup.sh
+sudo -u radiologger bash -c "cd /opt/radiologger && DATABASE_USER=$DB_USER DATABASE_PASSWORD=$DB_PASS DATABASE_NAME=$DB_NAME DATABASE_HOST=$DB_HOST DATABASE_PORT=$DB_PORT ./shell_db_setup.sh"
 
 # Sla het resultaat op
 db_setup_result=$?
