@@ -710,6 +710,15 @@ DB_NAME=$(grep -oP '(?<=/)[^?]+' /opt/radiologger/.env || echo "radiologger")
 # Log de gegevens voor debugging (verwijder wachtwoord uit log)
 echo "Database gegevens: $DB_USER@$DB_HOST:$DB_PORT/$DB_NAME"
 
+# Controleer en installeer eerst de vereiste Python-modules
+echo "Zorgen dat psycopg2 geïnstalleerd is..."
+if pip3 list | grep -q psycopg2-binary; then
+    echo "✓ psycopg2-binary is al geïnstalleerd"
+else
+    echo "→ psycopg2-binary installeren..."
+    pip3 install psycopg2-binary
+fi
+
 # Maak een Python script dat werkt met de correcte database URL
 echo "Python-based database setup starten..."
 # Kopieer het verbeterde init_db.py script
@@ -933,6 +942,10 @@ EOL
 
 # Maak het script uitvoerbaar en voer het uit
 chmod +x /opt/radiologger/init_db.py
+# Zorg dat de benodigde modules beschikbaar zijn in de python-omgeving voor de radiologger gebruiker
+sudo -u radiologger pip3 install psycopg2-binary
+
+# Voer het database-script uit
 sudo -u radiologger python3 /opt/radiologger/init_db.py
 
 # Sla het resultaat op

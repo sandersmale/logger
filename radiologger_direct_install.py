@@ -12,8 +12,20 @@ import sys
 import importlib.util
 import sqlite3
 import subprocess
-import psycopg2
 import traceback
+
+# Controleer of psycopg2 beschikbaar is, zo niet, proberen te installeren
+try:
+    import psycopg2
+except ImportError:
+    print("psycopg2 niet gevonden, proberen te installeren...")
+    try:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "psycopg2-binary"])
+        import psycopg2
+        print("psycopg2 succesvol geïnstalleerd")
+    except Exception as e:
+        print(f"Fout bij installeren van psycopg2: {e}")
+        sys.exit(1)
 from datetime import datetime
 from pathlib import Path
 

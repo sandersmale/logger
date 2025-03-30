@@ -17,8 +17,16 @@ logger.info("Database initialisatie start")
 
 try:
     # Import directe database modules
-    import psycopg2
-    from psycopg2 import sql
+    try:
+        import psycopg2
+        from psycopg2 import sql
+    except ImportError:
+        logger.info("psycopg2 niet gevonden, proberen te installeren...")
+        import subprocess
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "psycopg2-binary"])
+        import psycopg2
+        from psycopg2 import sql
+        logger.info("psycopg2 succesvol geïnstalleerd")
 
     # Lees de database URL uit de .env
     env_path = '.env'
