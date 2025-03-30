@@ -716,7 +716,8 @@ if pip3 list | grep -q psycopg2-binary; then
     echo "✓ psycopg2-binary is al geïnstalleerd"
 else
     echo "→ psycopg2-binary installeren..."
-    pip3 install psycopg2-binary
+    # Voorkom 'externally-managed-environment' fout in Ubuntu 24.04
+    python3 -m pip install --break-system-packages psycopg2-binary
 fi
 
 # Maak een Python script dat werkt met de correcte database URL
@@ -943,7 +944,7 @@ EOL
 # Maak het script uitvoerbaar en voer het uit
 chmod +x /opt/radiologger/init_db.py
 # Zorg dat de benodigde modules beschikbaar zijn in de python-omgeving voor de radiologger gebruiker
-sudo -u radiologger pip3 install psycopg2-binary
+sudo -u radiologger python3 -m pip install --break-system-packages psycopg2-binary
 
 # Voer het database-script uit
 sudo -u radiologger python3 /opt/radiologger/init_db.py
