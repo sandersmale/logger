@@ -20,10 +20,23 @@ try:
     try:
         import psycopg2
         from psycopg2 import sql
+        logger.info("psycopg2 module succesvol geladen")
     except ImportError:
         logger.info("psycopg2 niet gevonden, proberen te installeren...")
         import subprocess
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "psycopg2-binary"])
+        try:
+            # Eerst proberen met --break-system-packages voor Ubuntu 24.04+
+            subprocess.check_call([
+                sys.executable, "-m", "pip", "install", 
+                "--break-system-packages", "psycopg2-binary"
+            ])
+        except subprocess.CalledProcessError:
+            # Fallback naar oudere methode
+            logger.info("Installatie met --break-system-packages niet gelukt, fallback methode proberen...")
+            subprocess.check_call([
+                sys.executable, "-m", "pip", "install", "psycopg2-binary"
+            ])
+        
         import psycopg2
         from psycopg2 import sql
         logger.info("psycopg2 succesvol geïnstalleerd")
@@ -152,8 +165,14 @@ try:
         logger.info("Alle vereiste tabellen zijn aanwezig!")
     
     # Controleer of er gebruikers bestaan
-    cursor.execute("SELECT COUNT(*) FROM \"user\"")
-    user_count = cursor.fetchone()[0]
+    try:
+        cursor.execute("SELECT COUNT(*) FROM \"user\"")
+        result = cursor.fetchone()
+        user_count = result[0] if result else 0
+        logger.info(f"User count query succesvol uitgevoerd: {user_count}")
+    except Exception as e:
+        logger.warning(f"Fout bij ophalen user count: {str(e)}")
+        user_count = 0  # Veilige fallback
     
     if user_count == 0:
         logger.info("Geen gebruikers gevonden, standaard gebruikers aanmaken...")
@@ -184,8 +203,14 @@ try:
         logger.info(f"Er zijn al {user_count} gebruikers in de database")
     
     # Controleer of er stations bestaan
-    cursor.execute("SELECT COUNT(*) FROM station")
-    station_count = cursor.fetchone()[0]
+    try:
+        cursor.execute("SELECT COUNT(*) FROM station")
+        result = cursor.fetchone()
+        station_count = result[0] if result else 0
+        logger.info(f"Station count query succesvol uitgevoerd: {station_count}")
+    except Exception as e:
+        logger.warning(f"Fout bij ophalen station count: {str(e)}")
+        station_count = 0  # Veilige fallback
     
     if station_count == 0:
         logger.info("Geen stations gevonden, demo stations aanmaken...")
