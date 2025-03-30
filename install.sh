@@ -5,6 +5,12 @@
 # Aanbevolen commando voor directe installatie:
 # sudo bash -c "mkdir -p /tmp/radiologger && chmod 700 /tmp/radiologger && cd /tmp/radiologger && wget -O install.sh https://raw.githubusercontent.com/sandersmale/logger/main/install.sh && chmod +x install.sh && bash install.sh"
 
+# Download eerst het uninstall script
+echo "Downloaden van uninstall.sh..."
+mkdir -p /opt/radiologger
+wget -O /opt/radiologger/uninstall.sh https://raw.githubusercontent.com/sandersmale/logger/main/uninstall.sh
+chmod +x /opt/radiologger/uninstall.sh
+
 # Maak een debug logbestand aan
 DEBUG_LOG="/tmp/radiologger_install_debug.log"
 echo "### RADIOLOGGER INSTALLATIE DEBUG LOG ###" > $DEBUG_LOG
