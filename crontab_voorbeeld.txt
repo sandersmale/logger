@@ -6,7 +6,7 @@
 # Alle uitvoer wordt gelogd naar het opgegeven bestand
 
 # Omroep Land van Cuijk downloads (8 minuten na elk uur)
-8 * * * * radiologger cd /opt/radiologger && ./download_omroeplvc.sh >> /var/log/radiologger/crontab.log 2>&1
+8 * * * * radiologger cd /opt/radiologger && /opt/radiologger/venv/bin/python /opt/radiologger/download_omroeplvc_cron.py >> /var/log/radiologger/omroeplvc_cron.log 2>&1
 
 # Handmatige log-opschoning (indien niet al ingeschakeld via scheduler)
 0 4 * * * radiologger > /var/log/radiologger/radiologger.log >> /var/log/radiologger/crontab.log 2>&1

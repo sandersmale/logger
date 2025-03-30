@@ -277,24 +277,42 @@ if [ -f "setup_db.py" ]; then
     setup_result=$?
     if [ $setup_result -ne 0 ]; then
         echo "WAARSCHUWING: setup_db.py gaf een fout, probeer handmatige initialisatie..."
-        # Initialiseer tabel structuur direct met db.create_all() en verbeterde import robustheid
-        cd /opt/radiologger
-        sudo -u radiologger /opt/radiologger/venv/bin/python -c "
-import sys
+        # Maak een tijdelijk Python-script voor database-initialisatie
+        cat > /opt/radiologger/init_db_fallback.py << 'EOL'
+#!/usr/bin/env python3
 import os
+import sys
+from pathlib import Path
 
-# Expliciete directory toevoegen aan Python path
-sys.path.insert(0, '/opt/radiologger')
+# Zorg ervoor dat we in de juiste directory zijn
+os.chdir('/opt/radiologger')
+base_path = Path('/opt/radiologger')
+sys.path.insert(0, str(base_path))
+
+# Voeg de directory toe aan PYTHONPATH
+os.environ['PYTHONPATH'] = str(base_path)
 
 try:
     from app import db, app
     with app.app_context():
         db.create_all()
     print('✅ Database tabellen aangemaakt')
+    sys.exit(0)
 except Exception as e:
     print(f'❌ Fout bij aanmaken tabellen: {e}')
     sys.exit(1)
-"
+EOL
+
+        # Maak het script uitvoerbaar
+        chmod +x /opt/radiologger/init_db_fallback.py
+        chown radiologger:radiologger /opt/radiologger/init_db_fallback.py
+        
+        # Voer het script uit met de radiologger gebruiker
+        cd /opt/radiologger
+        sudo -u radiologger /opt/radiologger/venv/bin/python /opt/radiologger/init_db_fallback.py
+        
+        # Verwijder het tijdelijke script
+        rm -f /opt/radiologger/init_db_fallback.py
         if [ -f "seed_data.py" ]; then
             echo "Initialiseren van basisgegevens via seed_data.py..."
             cd /opt/radiologger
@@ -303,24 +321,42 @@ except Exception as e:
     fi
 elif [ -f "seed_data.py" ]; then
     echo "setup_db.py niet gevonden, maar seed_data.py wel. Database initialiseren..."
-    # Initialiseer tabel structuur direct met db.create_all() en verbeterde import robustheid
-    cd /opt/radiologger
-    sudo -u radiologger /opt/radiologger/venv/bin/python -c "
-import sys
+    # Maak een tijdelijk Python-script voor database-initialisatie
+    cat > /opt/radiologger/init_db_alt.py << 'EOL'
+#!/usr/bin/env python3
 import os
+import sys
+from pathlib import Path
 
-# Expliciete directory toevoegen aan Python path
-sys.path.insert(0, '/opt/radiologger')
+# Zorg ervoor dat we in de juiste directory zijn
+os.chdir('/opt/radiologger')
+base_path = Path('/opt/radiologger')
+sys.path.insert(0, str(base_path))
+
+# Voeg de directory toe aan PYTHONPATH
+os.environ['PYTHONPATH'] = str(base_path)
 
 try:
     from app import db, app
     with app.app_context():
         db.create_all()
     print('✅ Database tabellen aangemaakt')
+    sys.exit(0)
 except Exception as e:
     print(f'❌ Fout bij aanmaken tabellen: {e}')
     sys.exit(1)
-"
+EOL
+
+    # Maak het script uitvoerbaar
+    chmod +x /opt/radiologger/init_db_alt.py
+    chown radiologger:radiologger /opt/radiologger/init_db_alt.py
+    
+    # Voer het script uit met de radiologger gebruiker
+    cd /opt/radiologger
+    sudo -u radiologger /opt/radiologger/venv/bin/python /opt/radiologger/init_db_alt.py
+    
+    # Verwijder het tijdelijke script
+    rm -f /opt/radiologger/init_db_alt.py
     # Vul de database met basisgegevens
     cd /opt/radiologger
     sudo -u radiologger /opt/radiologger/venv/bin/python seed_data.py $use_default_flag
@@ -536,9 +572,8 @@ chown radiologger:radiologger /opt/radiologger/download_omroeplvc_cron.py
 # Zet de crontab voor het downloaden van Omroep LvC bestanden
 # 8 minuten na het uur (net als in de scheduler)
 echo "Omroep LvC download taak instellen (8 minuten na het uur)..."
-chmod +x /opt/radiologger/download_omroeplvc.sh
 (sudo -u radiologger crontab -l 2>/dev/null) | \
-    { cat; echo "8 * * * * cd /opt/radiologger && ./download_omroeplvc.sh >> /var/log/radiologger/omroeplvc_cron.log 2>&1"; } | \
+    { cat; echo "8 * * * * cd /opt/radiologger && /opt/radiologger/venv/bin/python /opt/radiologger/download_omroeplvc_cron.py >> /var/log/radiologger/omroeplvc_cron.log 2>&1"; } | \
     sudo -u radiologger crontab -
 
 echo ""
