@@ -1389,64 +1389,16 @@ EOL
     chmod +x /opt/radiologger/init_db.py
     chown radiologger:radiologger /opt/radiologger/init_db.py
     
-    # Voer het script uit met de radiologger gebruiker
-    debug_log "Voer init_db.py uit met verbose modus" true
-    run_cmd "cd /opt/radiologger" "directory wisselen" false
-    if ! run_cmd "sudo -u radiologger bash -c 'cd /opt/radiologger && PYTHONPATH=/opt/radiologger /opt/radiologger/venv/bin/python -v /opt/radiologger/init_db.py'" "init_db.py uitvoeren" true; then
-        handle_install_error "Database initialisatie via init_db.py mislukt" 1
-    fi
+    # We slaan de init_db.py uitvoering over omdat de database nu tijdens de eerste
+    # keer setup via de webinterface wordt geïnitialiseerd
+    debug_log "Database tabellen worden aangemaakt tijdens eerste bezoek aan de webinterface" true
+    echo "✅ Database tabellen worden aangemaakt tijdens de eerste configuratie"
     
     # Verwijder het tijdelijke script
     rm -f /opt/radiologger/init_db.py
-    # Maak een tijdelijk Python-script voor het aanmaken van standaard gebruikers
-    cat > /opt/radiologger/create_users.py << 'EOL'
-#!/usr/bin/env python3
-import os
-import sys
-from pathlib import Path
-
-# Zorg ervoor dat we in de juiste directory zijn
-os.chdir('/opt/radiologger')
-base_path = Path('/opt/radiologger')
-sys.path.insert(0, str(base_path))
-
-# Voeg de directory toe aan PYTHONPATH
-os.environ['PYTHONPATH'] = str(base_path)
-
-try:
-    from app import db, app
-    from models import User
-    from werkzeug.security import generate_password_hash
-    
-    with app.app_context():
-        if User.query.count() == 0:
-            admin = User(username='admin', role='admin', password_hash=generate_password_hash('radioadmin'))
-            editor = User(username='editor', role='editor', password_hash=generate_password_hash('radioeditor'))
-            listener = User(username='luisteraar', role='listener', password_hash=generate_password_hash('radioluisteraar'))
-            db.session.add(admin)
-            db.session.add(editor)
-            db.session.add(listener)
-            db.session.commit()
-            print('✅ Standaard gebruikers aangemaakt')
-    sys.exit(0)
-except Exception as e:
-    print(f'❌ Fout bij aanmaken gebruikers: {e}')
-    sys.exit(1)
-EOL
-
-    # Maak het script uitvoerbaar
-    chmod +x /opt/radiologger/create_users.py
-    chown radiologger:radiologger /opt/radiologger/create_users.py
-    
-    # Voer het script uit met de radiologger gebruiker
-    debug_log "Voer create_users.py uit met verbose modus" true
-    run_cmd "cd /opt/radiologger" "directory wisselen" false
-    if ! run_cmd "sudo -u radiologger bash -c 'cd /opt/radiologger && PYTHONPATH=/opt/radiologger /opt/radiologger/venv/bin/python -v /opt/radiologger/create_users.py'" "create_users.py uitvoeren" true; then
-        handle_install_error "Aanmaken gebruikers via create_users.py mislukt" 1
-    fi
-    
-    # Verwijder het tijdelijke script
-    rm -f /opt/radiologger/create_users.py
+    # We maken geen standaard gebruikers meer aan, omdat die nu in de setup via de webinterface worden aangemaakt
+    debug_log "Gebruikers worden aangemaakt tijdens eerste bezoek aan de webinterface" true
+    echo "✅ Gebruikers worden aangemaakt tijdens de eerste configuratie via de webinterface"
 fi
 
 echo ""
