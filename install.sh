@@ -10,13 +10,8 @@ fi
 
 # Controleer of we op Ubuntu 24.04 draaien
 if ! grep -q "Ubuntu" /etc/os-release || ! grep -q "24.04" /etc/os-release; then
-    echo "WAARSCHUWING: Dit script is getest op Ubuntu 24.04."
-    echo "Je gebruikt een andere versie. Wil je toch doorgaan? (j/n)"
-    read -r antwoord
-    if [[ ! "$antwoord" =~ ^[jJ]$ ]]; then
-        echo "Installatie geannuleerd"
-        exit 1
-    fi
+    echo "WAARSCHUWING: Dit script is getest op Ubuntu 24.04. Je gebruikt een andere versie."
+    echo "De installatie gaat door, maar er kunnen compatibiliteitsproblemen optreden."
 fi
 
 # Controleer internetverbinding
@@ -55,18 +50,42 @@ echo "6. Nginx configureren"
 echo "7. Optioneel: SSL certificaat genereren via Let's Encrypt"
 echo ""
 
-# Vraag eerst alle benodigde configuratiegegevens zodat de installatie ononderbroken kan verlopen
+# Configureer algemene installatie-instellingen
+export DEBIAN_FRONTEND=noninteractive
+export UCF_FORCE_CONFFOLD=1  # Behoud bestaande configuratiebestanden
+export NEEDRESTART_MODE=a    # Automatisch herstarten van services
+export NEEDRESTART_SUSPEND=1 # Onderdruk needrestart prompts
+
+# Vraag ALLE benodigde configuratiegegevens zodat de installatie zonder onderbrekingen kan verlopen
 echo "Voor de installatie zijn de volgende gegevens nodig:"
 echo "1. PostgreSQL database gebruikerswachtwoord"
 echo "2. Wasabi cloud storage gegevens"
+echo "3. Server- en installatieconfiguratie"
 echo ""
+
+# Database configuratie
 read -p "Kies een wachtwoord voor de PostgreSQL radiologger gebruiker: " db_password
+
+# Wasabi cloud storage
 read -p "Voer de Wasabi access key in: " wasabi_access
 read -p "Voer de Wasabi secret key in: " wasabi_secret
 read -p "Voer de Wasabi bucket naam in: " wasabi_bucket
 read -p "Voer de Wasabi regio in (standaard: eu-central-1): " wasabi_region
 wasabi_region=${wasabi_region:-eu-central-1}
-echo "Alle benodigde gegevens ontvangen. De installatie start nu..."
+
+# Server configuratie
+read -p "Server domeinnaam voor Nginx (standaard: logger.pilotradio.nl): " server_domain
+server_domain=${server_domain:-logger.pilotradio.nl}
+
+# SSL configuratie
+read -p "SSL certificaat installeren? (j/n, standaard: j): " ssl_response
+ssl_response=${ssl_response:-j}
+
+# Radiostations configuratie
+read -p "Standaard radiostations importeren? (j/n, standaard: j): " use_default_stations
+use_default_stations=${use_default_stations:-j}
+
+echo "Alle benodigde gegevens ontvangen. De installatie zal nu zonder verdere onderbrekingen verlopen..."
 echo ""
 
 echo "Stap 1: Systeem updaten en pakketten installeren..."
@@ -226,9 +245,7 @@ echo ""
 echo "Stap 6: Database initialiseren en vullen met basisgegevens..."
 cd /opt/radiologger || exit 1
 
-# Vraag of de gebruiker standaard stations wil
-echo "Wil je de standaard radiostations uit de oude database gebruiken? (j/n): "
-read -r use_default_stations
+# Gebruik de eerder opgegeven keuze voor standaard stations
 use_default_flag=""
 if [[ "$use_default_stations" =~ ^[jJ]$ ]]; then
     use_default_flag="--use-default-stations"
@@ -280,24 +297,24 @@ systemctl enable radiologger
 systemctl start radiologger
 
 echo ""
-echo "Stap 8: Nginx configureren..."
-cat > /etc/nginx/sites-available/radiologger << 'EOL'
+echo "Stap 8: Nginx configureren voor $server_domain..."
+cat > /etc/nginx/sites-available/radiologger << EOL
 server {
     listen 80;
-    server_name logger.pilotradio.nl;
+    server_name $server_domain;
 
     access_log /var/log/nginx/radiologger_access.log;
     error_log /var/log/nginx/radiologger_error.log;
 
     location / {
         proxy_pass http://127.0.0.1:5000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
         
         proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
         
         proxy_read_timeout 300s;
@@ -324,11 +341,13 @@ nginx -t
 systemctl restart nginx
 
 echo ""
-echo "Stap 9: Wil je een SSL certificaat genereren met Let's Encrypt? (j/n): "
-read -r ssl_response
+echo "Stap 9: SSL certificaat beheren..."
 if [[ "$ssl_response" =~ ^[jJ]$ ]]; then
-    certbot --nginx -d logger.pilotradio.nl
-    echo "SSL certificaat geïnstalleerd!"
+    echo "SSL certificaat wordt geïnstalleerd voor $server_domain..."
+    certbot --nginx -d "$server_domain" --non-interactive --agree-tos --redirect
+    echo "SSL certificaat voor $server_domain geïnstalleerd!"
+else
+    echo "SSL certificaat installatie overgeslagen op verzoek van gebruiker."
 fi
 
 echo ""
@@ -347,13 +366,17 @@ echo "Omroep LvC download taak instellen (8 minuten na het uur)..."
 
 echo ""
 echo "====================================================================="
-echo "Radiologger is succesvol geïnstalleerd!"
-echo "De applicatie draait nu op https://logger.pilotradio.nl"
+echo "✅ Radiologger is succesvol geïnstalleerd!"
+if [[ "$ssl_response" =~ ^[jJ]$ ]]; then
+    echo "De applicatie draait nu op https://$server_domain"
+else
+    echo "De applicatie draait nu op http://$server_domain"
+fi
 echo ""
 echo "Standaard inloggegevens:"
 echo "Admin: gebruikersnaam: admin, wachtwoord: radioadmin"
 echo "Editor: gebruikersnaam: editor, wachtwoord: radioeditor"
 echo "Luisteraar: gebruikersnaam: luisteraar, wachtwoord: radioluisteraar"
 echo ""
-echo "VERANDER DEZE WACHTWOORDEN DIRECT NA EERSTE INLOG!"
+echo "⚠️ BELANGRIJK: VERANDER DEZE WACHTWOORDEN DIRECT NA EERSTE INLOG!"
 echo "====================================================================="
