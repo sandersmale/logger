@@ -26,6 +26,15 @@ LOG_FILE="${LOG_DIR}/download_omroeplvc.log"
 LOCAL_BASE="${RECORDINGS_DIR}/omroep land van cuijk"
 REMOTE_URL_BASE="${OMROEP_LVC_URL:-https://gemist.omroeplvc.nl}"
 
+# Als we in de Radiologger directory zijn, gebruik de omgevingsvariabelen daarvan
+if [ -f "/opt/radiologger/.env" ]; then
+    # Laden vanuit .env bestand
+    echo "Laden van omgevingsvariabelen uit /opt/radiologger/.env"
+    set -o allexport
+    source /opt/radiologger/.env
+    set +o allexport
+fi
+
 # Zorg dat de directories bestaan
 mkdir -p "$LOG_DIR"
 mkdir -p "$LOCAL_BASE"
