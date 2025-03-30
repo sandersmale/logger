@@ -327,7 +327,94 @@ else
     echo "Voorbeeld stations worden gebruikt."
 fi
 
+# Maak een éénvoudig losstaand SQL-script dat DIRECT naar psql gaat
+# Deze methode gebruikt GEEN python imports, maar gaat rechtstreeks naar PostgreSQL
+cat > /opt/radiologger/setup_db.sql << 'EOL'
+-- Maak de user tabel aan
+CREATE TABLE IF NOT EXISTS "user" (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(64) UNIQUE NOT NULL,
+    password_hash VARCHAR(256) NOT NULL,
+    role VARCHAR(20) DEFAULT 'listener' NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Maak de station tabel aan
+CREATE TABLE IF NOT EXISTS "station" (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) UNIQUE NOT NULL,
+    recording_url VARCHAR(255) NOT NULL,
+    always_on BOOLEAN DEFAULT FALSE,
+    display_order INTEGER DEFAULT 999,
+    schedule_start_date DATE,
+    schedule_start_hour INTEGER,
+    schedule_end_date DATE,
+    schedule_end_hour INTEGER,
+    record_reason VARCHAR(255),
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Maak de dennis_station tabel aan
+CREATE TABLE IF NOT EXISTS "dennis_station" (
+    id SERIAL PRIMARY KEY,
+    folder VARCHAR(100) NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    url VARCHAR(255) NOT NULL,
+    visible_in_logger BOOLEAN DEFAULT FALSE,
+    last_updated TIMESTAMP DEFAULT NOW()
+);
+
+-- Maak de recording tabel aan
+CREATE TABLE IF NOT EXISTS "recording" (
+    id SERIAL PRIMARY KEY,
+    station_id INTEGER REFERENCES "station"(id) NOT NULL,
+    date DATE NOT NULL,
+    hour VARCHAR(2) NOT NULL,
+    filepath VARCHAR(255) NOT NULL,
+    program_title VARCHAR(255),
+    recording_type VARCHAR(20) DEFAULT 'scheduled',
+    s3_uploaded BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Maak de scheduled_job tabel aan
+CREATE TABLE IF NOT EXISTS "scheduled_job" (
+    id SERIAL PRIMARY KEY,
+    job_id VARCHAR(100) NOT NULL,
+    station_id INTEGER REFERENCES "station"(id) NOT NULL,
+    job_type VARCHAR(20) NOT NULL,
+    start_time TIMESTAMP NOT NULL,
+    end_time TIMESTAMP,
+    status VARCHAR(20) DEFAULT 'scheduled',
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Controleer of er al gebruikers zijn
+DO $$
+DECLARE
+    user_count INTEGER;
+BEGIN
+    SELECT COUNT(*) INTO user_count FROM "user";
+    
+    IF user_count = 0 THEN
+        -- Maak standaard admin gebruiker 
+        INSERT INTO "user" (username, password_hash, role)
+        VALUES ('admin', 'pbkdf2:sha256:150000$8e7e812c0e87d1b9e27efaca3f63ce84cfddfbe10be3a1de9c9a3f2c22ff9e91', 'admin');
+        
+        -- Maak standaard editor gebruiker
+        INSERT INTO "user" (username, password_hash, role)
+        VALUES ('editor', 'pbkdf2:sha256:150000$bc88b347fba0cb8eeeb35050a45794a41c71fcb56e2e5ef0f26c71213000f89a', 'editor');
+        
+        -- Maak standaard luisteraar gebruiker
+        INSERT INTO "user" (username, password_hash, role)
+        VALUES ('luisteraar', 'pbkdf2:sha256:150000$66d6f30f0bef2c6b9622c93aa6906bbe5b3c5a87e0ef3acb5e9f55b468c83e90', 'listener');
+    END IF;
+END $$;
+EOL
+
 # Maak een direct SQL-script voor database-initialisatie (failsafe methode)
+# Dit wordt alleen gebruikt als de directe SQL benadering faalt
 cat > /opt/radiologger/direct_db_setup.py << 'EOL'
 #!/usr/bin/env python3
 """
@@ -526,12 +613,37 @@ chmod +x /opt/radiologger/direct_db_setup.py
 chown radiologger:radiologger /opt/radiologger/direct_db_setup.py
 echo "✅ Direct database script rechten ingesteld"
 
-# Voer het direct SQL-script uit als failsafe
-echo "Direct SQL database setup starten..."
-sudo -u radiologger /opt/radiologger/venv/bin/python /opt/radiologger/direct_db_setup.py
+# Voer eerst het RUWE sql-script direct uit naar postgres (zonder Python)
+echo "Direct SQL-only database setup starten..."
+# Extraheer database gegevens uit eerder aangemaakte .env bestand
+DB_USER=$(grep -oP '(?<=postgresql://)[^:]+' /opt/radiologger/.env || echo "radiologger")
+DB_PASS=$(grep -oP '(?<=:)[^@]+(?=@)' /opt/radiologger/.env || echo "$db_password")
+DB_HOST=$(grep -oP '(?<=@)[^:]+(?=:)' /opt/radiologger/.env || echo "localhost")
+DB_PORT=$(grep -oP '(?<=:)[0-9]+(?=/)' /opt/radiologger/.env || echo "5432")
+DB_NAME=$(grep -oP '(?<=/)[^?]+' /opt/radiologger/.env || echo "radiologger")
 
-# Als het directe script succesvol was, sla de rest over
-direct_setup_result=$?
+# Log de gegevens voor debugging (verwijder wachtwoord uit log)
+echo "Database gegevens: $DB_USER@$DB_HOST:$DB_PORT/$DB_NAME"
+
+# Voer het SQL-script direct uit als de postgres gebruiker (GEEN PYTHON NODIG)
+echo "Directe SQL-commando's uitvoeren naar PostgreSQL..."
+sudo -u postgres psql -d $DB_NAME -f /opt/radiologger/setup_db.sql
+
+# Sla het resultaat op
+db_setup_result=$?
+if [ $db_setup_result -eq 0 ]; then
+    echo "✅ Direct SQL-commando's succesvol uitgevoerd!"
+    direct_setup_result=0
+else
+    echo "⚠️ Directe SQL-commando's niet succesvol, probeer via Python..."
+    # Voer het direct SQL-script uit als fallback
+    echo "Direct SQL via Python setup starten..."
+    sudo -u radiologger /opt/radiologger/venv/bin/python /opt/radiologger/direct_db_setup.py
+    direct_setup_result=$?
+fi
+
+# De directe_setup_result is al ingesteld, dus deze regel is niet nodig 
+# direct_setup_result=$?
 if [ $direct_setup_result -eq 0 ]; then
     echo "✅ Direct SQL database setup succesvol voltooid!"
     echo "Logbestand beschikbaar op: /tmp/radiologger_db_setup.log"
