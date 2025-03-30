@@ -282,7 +282,7 @@ if [ -f "setup_db.py" ]; then
 import sys
 import os
 # Zorg dat de huidige map in het Python pad zit
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+sys.path.insert(0, os.path.abspath('.') or os.getcwd())
 try:
     from app import db, app
     with app.app_context():
@@ -304,7 +304,7 @@ elif [ -f "seed_data.py" ]; then
 import sys
 import os
 # Zorg dat de huidige map in het Python pad zit
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+sys.path.insert(0, os.path.abspath('.') or os.getcwd())
 try:
     from app import db, app
     with app.app_context():
@@ -323,7 +323,7 @@ else
 import sys
 import os
 # Zorg dat de huidige map in het Python pad zit
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+sys.path.insert(0, os.path.abspath('.') or os.getcwd())
 try:
     from app import db, app
     with app.app_context():
@@ -338,7 +338,7 @@ except Exception as e:
 import sys
 import os
 # Zorg dat de huidige map in het Python pad zit
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+sys.path.insert(0, os.path.abspath('.') or os.getcwd())
 try:
     from app import db, app
     from models import User
@@ -457,7 +457,7 @@ echo "Stap 10: Cron-taken instellen voor onderhoud..."
 # 8 minuten na het uur (net als in de scheduler)
 echo "Omroep LvC download taak instellen (8 minuten na het uur)..."
 (sudo -u radiologger crontab -l 2>/dev/null) | \
-    { cat; echo "8 * * * * cd /opt/radiologger && /opt/radiologger/venv/bin/python -c 'import sys, os; sys.path.insert(0, os.path.abspath(os.path.dirname(\"__file__\"))); from logger import download_omroeplvc; download_omroeplvc()' >> /var/log/radiologger/omroeplvc_cron.log 2>&1"; } | \
+    { cat; echo "8 * * * * cd /opt/radiologger && /opt/radiologger/venv/bin/python -c 'import sys, os; sys.path.insert(0, os.path.abspath(\".\") or os.getcwd()); from logger import download_omroeplvc; download_omroeplvc()' >> /var/log/radiologger/omroeplvc_cron.log 2>&1"; } | \
     sudo -u radiologger crontab -
 
 echo ""
