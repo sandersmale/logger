@@ -98,12 +98,12 @@ def get_ffmpeg_version():
 
 def clean_folder_name(name):
     """Clean a folder name for filesystem use"""
-    # Replace special characters with underscores
-    cleaned = re.sub(r'[^a-zA-Z0-9_\-.]', '_', name)
+    # Replace special characters with underscores, EXCEPT spaces
+    cleaned = re.sub(r'[^a-zA-Z0-9_\-. ]', '_', name)
     # Remove multiple consecutive underscores
     cleaned = re.sub(r'_{2,}', '_', cleaned)
-    # Remove leading and trailing underscores
-    cleaned = cleaned.strip('_')
+    # Remove leading and trailing underscores and spaces
+    cleaned = cleaned.strip('_ ')
     return cleaned.lower()
 
 def is_valid_stream_url(url):

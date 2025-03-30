@@ -366,6 +366,16 @@ def upload_to_wasabi():
                         logger.info(f"Uploading {file_path} to S3")
                         s3_client.upload_file(file_path, app.config['S3_BUCKET'], s3_key)
                         
+                        # Verwijder direct als LOCAL_FILE_RETENTION op 0 staat
+                        if app.config.get('LOCAL_FILE_RETENTION', 0) == 0:
+                            try:
+                                # Maar alleen als de file niet in gebruik is (niet aan het schrijven)
+                                if time.time() - os.path.getmtime(file_path) > 60:
+                                    os.remove(file_path)
+                                    logger.info(f"Direct verwijderd na upload: {file_path}")
+                            except Exception as e:
+                                logger.error(f"Fout bij direct verwijderen na upload: {e}")
+                        
                         # Add to database if not exists
                         station = Station.query.filter_by(name=station_name).first()
                         if station:
@@ -523,23 +533,43 @@ def sync_database_with_s3(s3_client):
 def cleanup_local_files():
     """Remove local files older than the retention period"""
     try:
-        retention_hours = app.config.get('LOCAL_FILE_RETENTION', 2)
-        cutoff_time = time.time() - (retention_hours * 3600)
+        retention_hours = app.config.get('LOCAL_FILE_RETENTION', 0)
         
-        removed_count = 0
-        
-        for root, _, files in os.walk(app.config['RECORDINGS_DIR']):
-            for file in files:
-                if file.endswith('.mp3'):
-                    file_path = os.path.join(root, file)
-                    try:
-                        if os.path.getmtime(file_path) < cutoff_time:
-                            os.remove(file_path)
-                            removed_count += 1
-                    except Exception as e:
-                        logger.error(f"Error removing {file_path}: {e}")
-        
-        logger.info(f"Removed {removed_count} files older than {retention_hours} hours")
+        # Als retention op 0 staat, direct alle MP3 bestanden verwijderen die niet in gebruik zijn
+        if retention_hours == 0:
+            logger.info("LOCAL_FILE_RETENTION is 0, removing all uploaded files immediately")
+            removed_count = 0
+            
+            for root, _, files in os.walk(app.config['RECORDINGS_DIR']):
+                for file in files:
+                    if file.endswith('.mp3'):
+                        file_path = os.path.join(root, file)
+                        try:
+                            # Controleer of het bestand niet in gebruik is (60 seconden buffer)
+                            if time.time() - os.path.getmtime(file_path) > 60:
+                                os.remove(file_path)
+                                removed_count += 1
+                        except Exception as e:
+                            logger.error(f"Error removing {file_path}: {e}")
+            
+            logger.info(f"🗑️ Direct verwijderd: {removed_count} lokale bestanden die niet in gebruik zijn")
+        else:
+            # Gebruik de ingestelde retentieperiode
+            cutoff_time = time.time() - (retention_hours * 3600)
+            removed_count = 0
+            
+            for root, _, files in os.walk(app.config['RECORDINGS_DIR']):
+                for file in files:
+                    if file.endswith('.mp3'):
+                        file_path = os.path.join(root, file)
+                        try:
+                            if os.path.getmtime(file_path) < cutoff_time:
+                                os.remove(file_path)
+                                removed_count += 1
+                        except Exception as e:
+                            logger.error(f"Error removing {file_path}: {e}")
+            
+            logger.info(f"🧹 Removed {removed_count} files older than {retention_hours} hours")
     
     except Exception as e:
         logger.error(f"Error in cleanup_local_files: {e}")

@@ -23,7 +23,7 @@ class Config:
     # Opname instellingen
     RECORDINGS_DIR = os.environ.get('RECORDINGS_DIR', 'recordings')
     RETENTION_DAYS = int(os.environ.get('RETENTION_DAYS', 30))
-    LOCAL_FILE_RETENTION = int(os.environ.get('LOCAL_FILE_RETENTION', 2))  # Uren voordat lokale bestanden worden verwijderd
+    LOCAL_FILE_RETENTION = int(os.environ.get('LOCAL_FILE_RETENTION', 0))  # Uren voordat lokale bestanden worden verwijderd (0 = direct na upload)
     
     # Wasabi S3 instellingen
     WASABI_ACCESS_KEY = os.environ.get('WASABI_ACCESS_KEY')

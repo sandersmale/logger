@@ -414,6 +414,16 @@ def upload_and_remove():
                         s3_client.upload_file(file_path, app.config['WASABI_BUCKET'], s3_key)
                         logger.info(f"⬆️ Uploaded {file_path} to s3://{app.config['WASABI_BUCKET']}/{s3_key}")
                         
+                        # Verwijder direct als LOCAL_FILE_RETENTION op 0 staat
+                        if app.config.get('LOCAL_FILE_RETENTION', 0) == 0:
+                            try:
+                                # Maar alleen als de file niet in gebruik is (niet aan het schrijven)
+                                if time.time() - os.path.getmtime(file_path) > 60:
+                                    os.remove(file_path)
+                                    logger.info(f"🗑️ Direct verwijderd na upload: {file_path}")
+                            except Exception as e:
+                                logger.error(f"Fout bij direct verwijderen na upload: {e}")
+                        
                         # Add to database if not exists
                         station = Station.query.filter_by(name=station_name).first()
                         if station:
