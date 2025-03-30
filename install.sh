@@ -1420,6 +1420,7 @@ User=radiologger
 Group=radiologger
 WorkingDirectory=/opt/radiologger
 Environment="PATH=/opt/radiologger/venv/bin"
+Environment="HOME=/opt/radiologger"
 EnvironmentFile=/opt/radiologger/.env
 ExecStart=/opt/radiologger/venv/bin/gunicorn \
     --workers 3 \
@@ -1491,7 +1492,113 @@ certbot --nginx -d "$server_domain" --non-interactive --agree-tos --redirect --e
 echo "SSL certificaat voor $server_domain geïnstalleerd!"
 
 echo ""
-echo "Stap 10: Cron-taken instellen voor onderhoud..."
+echo "Stap 10: Fix-permissions script aanmaken voor noodgevallen..."
+# Maak een fix_permissions.sh script aan als het nog niet aanwezig is
+cat > /opt/radiologger/fix_permissions.sh << 'EOL'
+#!/bin/bash
+# Fix permissies script voor de Radiologger applicatie
+# Dit script repareert alle bestandsrechten en eigenaarschap
+
+# Controleren of het script als root wordt uitgevoerd
+if [[ $EUID -ne 0 ]]; then
+   echo "Dit script moet als root worden uitgevoerd (gebruik sudo)"
+   exit 1
+fi
+
+echo "Radiologger Permissions Fix Script"
+echo "=================================="
+echo ""
+
+# Fix eigenaarschap
+echo "Repareren van eigenaarschap van bestanden en mappen..."
+chown -R radiologger:radiologger /opt/radiologger
+chown -R radiologger:radiologger /var/log/radiologger
+chown -R radiologger:radiologger /var/lib/radiologger
+
+# Fix bestandsrechten
+echo "Repareren van bestandsrechten..."
+chmod 755 /opt/radiologger
+chmod 755 /var/log/radiologger
+chmod 755 /var/lib/radiologger
+chmod 755 /var/lib/radiologger/recordings
+
+# Fix .env bestand
+echo "Repareren van .env bestandsrechten..."
+if [ -f /opt/radiologger/.env ]; then
+  chmod 640 /opt/radiologger/.env
+  chown radiologger:radiologger /opt/radiologger/.env
+  echo "✅ .env bestand rechten gecorrigeerd"
+else
+  echo "⚠️ .env bestand niet gevonden!"
+fi
+
+# Fix Python omgeving
+echo "Repareren van Python virtual environment rechten..."
+if [ -d /opt/radiologger/venv ]; then
+  chown -R radiologger:radiologger /opt/radiologger/venv
+  chmod -R 755 /opt/radiologger/venv
+  echo "✅ Python virtual environment rechten gecorrigeerd"
+else
+  echo "⚠️ Python virtual environment niet gevonden!"
+fi
+
+# Fix uitvoerbare Python scripts
+echo "Uitvoerbare bestanden controleren..."
+for script in /opt/radiologger/*.py; do
+  if [ -f "$script" ]; then
+    chmod 755 "$script"
+  fi
+done
+echo "✅ Python scripts executable gemaakt"
+
+# Fix nginx configuratie (indien aanwezig)
+if [ -f /etc/nginx/sites-available/radiologger ]; then
+  chmod 644 /etc/nginx/sites-available/radiologger
+  echo "✅ Nginx configuratie rechten gecorrigeerd"
+fi
+
+# Fix HOME directory voor de service
+echo "HOME directory repareren in de service configuratie..."
+if [ -f /etc/systemd/system/radiologger.service ]; then
+  if ! grep -q "Environment=\"HOME=/opt/radiologger\"" /etc/systemd/system/radiologger.service; then
+    # Voeg HOME toe aan de radiologger.service als het ontbreekt
+    sed -i '/\[Service\]/a Environment="HOME=/opt/radiologger"' /etc/systemd/system/radiologger.service
+    echo "✅ HOME directory in systemd service toegevoegd"
+    
+    # Herlaad systemd en restart de service
+    systemctl daemon-reload
+    systemctl restart radiologger
+  else
+    echo "✅ HOME directory is al correct ingesteld in de service"
+  fi
+else
+  echo "⚠️ Radiologger service bestand niet gevonden!"
+fi
+
+# Verificatie
+echo ""
+echo "Verificatie van rechten:"
+ls -ld /opt/radiologger
+ls -ld /var/log/radiologger
+ls -ld /var/lib/radiologger
+ls -ld /var/lib/radiologger/recordings
+if [ -f /opt/radiologger/.env ]; then
+  ls -l /opt/radiologger/.env
+fi
+
+echo ""
+echo "✅ Alle rechten zijn gerepareerd!"
+echo "Herstart de Radiologger service met: sudo systemctl restart radiologger"
+echo "Herstart Nginx met: sudo systemctl restart nginx"
+EOL
+
+# Maak het permissions script uitvoerbaar
+chmod +x /opt/radiologger/fix_permissions.sh
+chown radiologger:radiologger /opt/radiologger/fix_permissions.sh
+echo "✅ Fix-permissions script aangemaakt en klaar voor gebruik"
+
+echo ""
+echo "Stap 11: Cron-taken instellen voor onderhoud..."
 # Voeg crontab toe voor de radiologger gebruiker
 (sudo -u radiologger crontab -l 2>/dev/null || echo "") | \
     { cat; echo "0 2 * * * find /var/log/radiologger -name \"*.log\" -type f -mtime +30 -delete"; } | \

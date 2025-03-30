@@ -63,6 +63,21 @@ echo "Controleren van permissies voor belangrijke mappen..."
 ls -ld /opt/radiologger
 ls -ld /var/log/radiologger
 
+# Controleer main.py bestand (cruciaal voor Gunicorn)
+echo ""
+echo "Controleren op main.py bestand (belangrijk voor Gunicorn)..."
+if [ -f /opt/radiologger/main.py ]; then
+    echo "✅ main.py bestand gevonden"
+    # Toon de inhoud
+    echo "Inhoud van main.py:"
+    cat -n /opt/radiologger/main.py
+    # Controleer bestandsrechten
+    ls -l /opt/radiologger/main.py
+else
+    echo "❌ main.py bestand niet gevonden! Dit veroorzaakt 'ModuleNotFoundError: No module named main'"
+    echo "Dit bestand is essentieel voor Gunicorn om de applicatie te starten."
+fi
+
 # Controleer Python omgeving
 echo ""
 echo "Controleren Python omgeving..."
@@ -107,7 +122,10 @@ echo ""
 echo "3. Controleer .env bestand:"
 echo "   sudo nano /opt/radiologger/.env"
 echo ""
-echo "4. Fix permissies:"
+echo "4. Fix permissies (beste optie):"
+echo "   sudo bash /opt/radiologger/fix_permissions.sh"
+echo ""
+echo "   Of handmatig:"
 echo "   sudo chown -R radiologger:radiologger /opt/radiologger"
 echo "   sudo chown -R radiologger:radiologger /var/log/radiologger"
 echo ""
@@ -126,11 +144,25 @@ if [[ "$AUTO_FIX" =~ ^[jJ]$ ]]; then
     echo "Automatische fixes uitvoeren..."
     
     # Fix permissies
-    echo "Permissies fixen..."
-    chown -R radiologger:radiologger /opt/radiologger
-    chown -R radiologger:radiologger /var/log/radiologger
-    chmod 755 /opt/radiologger
-    chmod 755 /var/log/radiologger
+    echo "Permissies fixen met fix_permissions.sh script..."
+    if [ -f /opt/radiologger/fix_permissions.sh ]; then
+        bash /opt/radiologger/fix_permissions.sh
+    else
+        echo "fix_permissions.sh script niet gevonden, handmatige fix..."
+        chown -R radiologger:radiologger /opt/radiologger
+        chown -R radiologger:radiologger /var/log/radiologger
+        chmod 755 /opt/radiologger
+        chmod 755 /var/log/radiologger
+        
+        # Fix HOME in service als het script niet bestaat
+        if [ -f /etc/systemd/system/radiologger.service ]; then
+          if ! grep -q "Environment=\"HOME=/opt/radiologger\"" /etc/systemd/system/radiologger.service; then
+            echo "HOME directory toevoegen aan service..."
+            sed -i '/\[Service\]/a Environment="HOME=/opt/radiologger"' /etc/systemd/system/radiologger.service
+            systemctl daemon-reload
+          fi
+        fi
+    fi
     
     # Controleer socket
     echo "Poort 5000 resetten..."

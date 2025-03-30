@@ -78,6 +78,28 @@ else
   echo "⚠️ Radiologger service bestand niet gevonden!"
 fi
 
+# Check main.py bestaat
+echo "Controleren of main.py bestaat..."
+if [ -f /opt/radiologger/main.py ]; then
+  echo "✅ main.py bestaat"
+  chmod 755 /opt/radiologger/main.py
+  chown radiologger:radiologger /opt/radiologger/main.py
+  echo "✅ Rechten voor main.py gecorrigeerd"
+else
+  echo "❌ main.py bestaat niet! Dit is nodig voor Gunicorn."
+  # Maak main.py aan als het niet bestaat
+  echo "📝 main.py aanmaken..."
+  cat > /opt/radiologger/main.py << 'EOL'
+from app import app
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000, debug=True)
+EOL
+  chmod 755 /opt/radiologger/main.py
+  chown radiologger:radiologger /opt/radiologger/main.py
+  echo "✅ main.py aangemaakt en geconfigureerd"
+fi
+
 # Verificatie
 echo ""
 echo "Verificatie van rechten:"
@@ -88,6 +110,7 @@ ls -ld /var/lib/radiologger/recordings
 if [ -f /opt/radiologger/.env ]; then
   ls -l /opt/radiologger/.env
 fi
+ls -l /opt/radiologger/main.py
 
 echo ""
 echo "✅ Alle rechten zijn gerepareerd!"
