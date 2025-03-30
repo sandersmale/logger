@@ -4,6 +4,8 @@
 #
 # Aanbevolen commando voor directe installatie:
 # sudo bash -c "mkdir -p /tmp/radiologger && chmod 700 /tmp/radiologger && cd /tmp/radiologger && wget -O install.sh https://raw.githubusercontent.com/sandersmale/logger/main/install.sh && chmod +x install.sh && bash install.sh"
+#
+# Versie: 2.0 - Verbeterd met automatische controle van kritieke bestanden
 
 # Download eerst het uninstall script
 echo "Downloaden van uninstall.sh..."
@@ -267,7 +269,7 @@ chown -R radiologger:radiologger /opt/radiologger
 
 # Controleer of kritieke bestanden correct zijn gekopieerd
 echo "Controleren of kritieke bestanden aanwezig zijn..."
-kritieke_bestanden=("main.py" "diagnose_502.sh" "fix_permissions.sh" "find_env_issues.sh")
+kritieke_bestanden=("main.py" "app.py" "routes.py" "player.py" "models.py" "auth.py" "config.py" "storage.py" "logger.py" "diagnose_502.sh" "fix_permissions.sh" "find_env_issues.sh") 
 missende_bestanden=()
 
 for bestand in "${kritieke_bestanden[@]}"; do
@@ -479,54 +481,298 @@ EOL
         echo "✅ diagnose_502.sh succesvol aangemaakt"
     fi
     
-    if [[ " ${missende_bestanden[*]} " =~ " main.py " ]]; then
-        echo "📝 main.py aanmaken..."
-        cat > /opt/radiologger/main.py << 'EOL'
+    # Download of maak kritieke bestanden aan als deze ontbreken
+    # Eerst van GitHub proberen te downloaden
+    for bestand in "${missende_bestanden[@]}"; do
+        echo "Probeer $bestand te downloaden van GitHub..."
+        if wget -q -O "/opt/radiologger/$bestand" "https://raw.githubusercontent.com/sandersmale/logger/main/$bestand"; then
+            chmod 755 "/opt/radiologger/$bestand"
+            chown radiologger:radiologger "/opt/radiologger/$bestand"
+            echo "✅ $bestand succesvol gedownload van GitHub"
+        else
+            echo "❌ Kon $bestand niet downloaden van GitHub"
+            # Als nog steeds niet beschikbaar, maak dan een fallback versie
+            case "$bestand" in
+                "main.py")
+                    echo "📝 Fallback main.py aanmaken..."
+                    cat > /opt/radiologger/main.py << 'EOL'
 import os
+import sys
 import logging
-from flask import Flask
+
+# Voeg de huidige map toe aan Python's module zoekpad
+current_dir = os.path.dirname(os.path.abspath(__file__))
+if current_dir not in sys.path:
+    sys.path.insert(0, current_dir)
 
 # Configureer logging
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger('app')
+logger = logging.getLogger('main')
 
-# create the app
+# Probeer app te importeren met verbeterde foutafhandeling
+try:
+    # Importeer de app vanuit app.py
+    from app import app, db
+    
+    # Probeer vervolgens routes te importeren
+    try:
+        import routes
+        logger.info("Routes succesvol geladen")
+    except ImportError as e:
+        logger.error(f"Kon routes niet importeren: {str(e)}")
+        
+        # Fallback route als routes niet geladen kunnen worden
+        @app.route('/')
+        def fallback_index():
+            return "Radiologger draait, maar routes konden niet geladen worden."
+    
+    # Start scheduler indien mogelijk
+    try:
+        from logger import start_scheduler
+        from apscheduler.schedulers.background import BackgroundScheduler
+        
+        scheduler = BackgroundScheduler()
+        with app.app_context():
+            start_scheduler(scheduler)
+        logger.info("Scheduler succesvol gestart")
+    except ImportError as e:
+        logger.warning(f"Kon scheduler niet starten: {str(e)}")
+    
+except ImportError as e:
+    # Als app.py niet geladen kan worden, maak een minimale app
+    logger.error(f"Kon app niet laden: {str(e)}")
+    from flask import Flask, render_template_string
+    
+    app = Flask(__name__)
+    app.secret_key = os.environ.get("FLASK_SECRET_KEY", "emergency-key")
+    
+    @app.route('/')
+    def emergency_index():
+        return render_template_string("""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Radiologger Noodmodus</title>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <style>
+                body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
+                h1 { color: #2c3e50; }
+                .container { max-width: 800px; margin: 0 auto; }
+                .alert { padding: 15px; border-radius: 4px; margin-bottom: 20px; }
+                .alert-warning { background-color: #fff3cd; color: #856404; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>Radiologger (Noodmodus)</h1>
+                <div class="alert alert-warning">
+                    De applicatie draait in noodmodus. De volledige functionaliteit is niet beschikbaar.
+                </div>
+                <p>Error: {{error}}</p>
+                <p>Controleer de server logs voor meer informatie.</p>
+            </div>
+        </body>
+        </html>
+        """, error=str(e))
+
+# Development server starter
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000, debug=True)
+EOL
+                    chmod 755 /opt/radiologger/main.py
+                    chown radiologger:radiologger /opt/radiologger/main.py
+                    echo "✅ Fallback main.py succesvol aangemaakt"
+                    ;;
+                "app.py")
+                    echo "📝 Fallback app.py aanmaken..."
+                    cat > /opt/radiologger/app.py << 'EOL'
+import os
+import logging
+from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.orm import DeclarativeBase
+from flask_login import LoginManager
+
+# Configureer logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Basisklasse voor SQLAlchemy modellen
+class Base(DeclarativeBase):
+    pass
+
+# Initialiseer database
+db = SQLAlchemy(model_class=Base)
+
+# Initialiseer de app
 app = Flask(__name__)
 
-# setup a secret key
-app.secret_key = os.environ.get("FLASK_SECRET_KEY", "development-key-replace-in-production")
-
-# configureer de database
+# Configureer app
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
     "pool_recycle": 300,
     "pool_pre_ping": True,
 }
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "development-key-replace-in-production")
 
-# Log de database URL (verberg wachtwoord voor veiligheid)
+# Logging van configuratie (zonder wachtwoorden)
 db_url = os.environ.get("DATABASE_URL", "")
 if db_url:
-    parts = db_url.split('@')
-    if len(parts) > 1:
-        credential_parts = parts[0].split(':')
-        if len(credential_parts) > 2:
-            masked_url = f"{credential_parts[0]}:****@{parts[1]}"
-            logger.info(f"App configuratie geladen. Database: {masked_url}")
+    masked_url = db_url.replace(db_url.split('@')[0].split(':')[-1], '****')
+    logger.info(f"App configuratie geladen. Database: {masked_url}")
 
-# Importeer app.py (de echte app definitie)
-from app import app as flask_app
+# Initialiseer de database met de app
+db.init_app(app)
 
-# Deze import moet na app.py komen om circulaire imports te voorkomen
-import routes
+# Initialiseer LoginManager
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
 
-# Alleen voor lokale ontwikkeling
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+# Import blueprints
+try:
+    from auth import auth_bp
+    app.register_blueprint(auth_bp)
+    logger.info("Authentication blueprint geregistreerd")
+except ImportError as e:
+    logger.warning(f"Kon auth blueprint niet laden: {str(e)}")
+
+# Context hook voor opruimen
+@app.teardown_request
+def teardown_request(exception=None):
+    if exception:
+        db.session.rollback()
+    db.session.remove()
+
+# Error handlers
+@app.errorhandler(404)
+def not_found_error(error):
+    return "Pagina niet gevonden", 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    db.session.rollback()
+    return "Interne server fout", 500
+
+# Controleer of alle benodigde mappen bestaan
+for dir_path in [os.environ.get('RECORDINGS_DIR', 'recordings'), 
+                os.environ.get('LOGS_DIR', 'logs')]:
+    if not os.path.exists(dir_path):
+        try:
+            os.makedirs(dir_path, exist_ok=True)
+            logger.info(f"Map {dir_path} aangemaakt")
+        except Exception as e:
+            logger.error(f"Kon map {dir_path} niet aanmaken: {str(e)}")
+
+# Exporteer de app voor gebruik in andere modules
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)
 EOL
-        chmod 755 /opt/radiologger/main.py
-        chown radiologger:radiologger /opt/radiologger/main.py
-        echo "✅ main.py succesvol aangemaakt"
-    fi
+                    chmod 755 /opt/radiologger/app.py
+                    chown radiologger:radiologger /opt/radiologger/app.py
+                    echo "✅ Fallback app.py succesvol aangemaakt"
+                    ;;
+                "player.py")
+                    echo "📝 Fallback player.py aanmaken..."
+                    cat > /opt/radiologger/player.py << 'EOL'
+import os
+import io
+import subprocess
+from flask import render_template, send_file, Response, request, redirect, url_for, abort
+from datetime import datetime, date, timedelta
+from app import app, db
+import logging
+
+logger = logging.getLogger(__name__)
+
+@app.route('/list_recordings')
+def list_recordings():
+    """Hoofdpagina - toont lijst met opnames met uitklapbaar menu"""
+    try:
+        # Toon eenvoudige placeholder voor fallback
+        return "Lijst met opnames (fallback versie)"
+    except Exception as e:
+        logger.error(f"Fout bij ophalen opnames: {str(e)}")
+        return "Er is een fout opgetreden bij het ophalen van de opnames"
+
+@app.route('/player/<int:recording_id>')
+def player(recording_id):
+    """Audio player for recordings"""
+    try:
+        # Toon eenvoudige placeholder voor fallback
+        return f"Audio player voor opname {recording_id} (fallback versie)"
+    except Exception as e:
+        logger.error(f"Fout bij laden player: {str(e)}")
+        return f"Er is een fout opgetreden bij het laden van de player: {str(e)}"
+EOL
+                    chmod 755 /opt/radiologger/player.py
+                    chown radiologger:radiologger /opt/radiologger/player.py
+                    echo "✅ Fallback player.py succesvol aangemaakt"
+                    ;;
+                "routes.py")
+                    echo "📝 Fallback routes.py aanmaken..."
+                    cat > /opt/radiologger/routes.py << 'EOL'
+import os
+import logging
+from flask import render_template, redirect, url_for, flash, request
+from app import app, db
+
+# Configureer logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger('routes')
+
+# Basisroutes
+@app.route('/')
+def index():
+    """Homepage - doorverwijzen naar juiste pagina"""
+    try:
+        return redirect(url_for('list_recordings'))
+    except Exception as e:
+        logger.error(f"Fout bij doorverwijzen naar lijst opnames: {str(e)}")
+        return "Welkom bij Radiologger (Fallback homepage)"
+
+@app.route('/admin')
+def admin():
+    """Admin pagina - statusinformatie"""
+    try:
+        return "Admin pagina (Fallback versie)"
+    except Exception as e:
+        logger.error(f"Fout bij weergeven admin pagina: {str(e)}")
+        return "Admin pagina kon niet geladen worden"
+
+@app.route('/health')
+def health_check():
+    """Health check endpoint voor monitoring"""
+    return "OK", 200
+
+# Fallback templates voor als deze ontbreken
+@app.context_processor
+def inject_now():
+    """Injecteer huidige datum en tijd in templates"""
+    from datetime import datetime
+    return {'now': datetime.utcnow()}
+
+# Error handlers
+@app.errorhandler(404)
+def not_found_error(error):
+    """404 error handler"""
+    return "Pagina niet gevonden", 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    """500 error handler"""
+    db.session.rollback()
+    return "Interne server fout", 500
+EOL
+                    chmod 755 /opt/radiologger/routes.py
+                    chown radiologger:radiologger /opt/radiologger/routes.py
+                    echo "✅ Fallback routes.py succesvol aangemaakt"
+                    ;;
+            esac
+        fi
+    done
     
     if [[ " ${missende_bestanden[*]} " =~ " find_env_issues.sh " ]]; then
         echo "📝 find_env_issues.sh aanmaken..."
