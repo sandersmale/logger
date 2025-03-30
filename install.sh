@@ -2,6 +2,58 @@
 # Radiologger installatiescript voor Ubuntu 24.04
 # Dit script installeert en configureert de Radiologger applicatie
 
+# Maak een debug logbestand aan
+DEBUG_LOG="/tmp/radiologger_install_debug.log"
+echo "### RADIOLOGGER INSTALLATIE DEBUG LOG ###" > $DEBUG_LOG
+echo "Datum: $(date)" >> $DEBUG_LOG
+echo "Ubuntu versie: $(lsb_release -a 2>/dev/null)" >> $DEBUG_LOG
+echo "----------------------------------------" >> $DEBUG_LOG
+
+# Functie voor het loggen van debug informatie
+debug_log() {
+  echo "$(date +"%Y-%m-%d %H:%M:%S") - $1" >> $DEBUG_LOG
+  if [ "$2" = "true" ]; then
+    echo "$1"
+  fi
+}
+
+# Functie voor het uitvoeren van commando's met debug logging
+run_cmd() {
+  local cmd="$1"
+  local msg="$2"
+  local show_output="${3:-false}"
+  
+  debug_log "UITVOEREN: $cmd" true
+  if [ "$show_output" = "true" ]; then
+    echo "$ $cmd"
+    eval "$cmd" 2>&1 | tee -a $DEBUG_LOG
+    local exit_code=${PIPESTATUS[0]}
+  else
+    debug_log "START UITVOER:" false
+    local output=$(eval "$cmd" 2>&1)
+    local exit_code=$?
+    echo "$output" >> $DEBUG_LOG
+    debug_log "EINDE UITVOER (exit code: $exit_code)" false
+  fi
+  
+  if [ $exit_code -ne 0 ]; then
+    debug_log "FOUT ($exit_code): $msg" true
+    echo "💥 Fout bij $msg (exit code: $exit_code)"
+    echo "Zie $DEBUG_LOG voor meer details"
+    if [ "$show_output" != "true" ]; then
+      echo "Laatste uitvoer:"
+      echo "$output" | tail -n 10
+    fi
+  else
+    debug_log "SUCCES: $msg" true
+  fi
+  
+  return $exit_code
+}
+
+debug_log "Installatiescript gestart" true
+echo "Debuglog wordt geschreven naar: $DEBUG_LOG"
+
 # Controleer of het script als root draait
 if [[ $EUID -ne 0 ]]; then
    echo "Dit script moet als root worden uitgevoerd (gebruik sudo)"
@@ -258,25 +310,41 @@ chmod 600 /opt/radiologger/.env
 
 echo ""
 echo "Stap 6: Database initialiseren en vullen met basisgegevens..."
-cd /opt/radiologger || exit 1
+debug_log "Start database initialisatie" true
+run_cmd "cd /opt/radiologger" "directory wisselen" false
 
 # Gebruik de eerder opgegeven keuze voor standaard stations
 use_default_flag=""
 if [[ "$use_default_stations" =~ ^[jJ]$ ]]; then
     use_default_flag="--use-default-stations"
-    echo "Standaard stations uit de oude database worden gebruikt."
+    debug_log "Standaard stations uit de oude database worden gebruikt." true
 else
-    echo "Voorbeeld stations worden gebruikt."
+    debug_log "Voorbeeld stations worden gebruikt." true
 fi
+
+# Verzamel diagnostische informatie over Python en de omgeving
+debug_log "Python versie-informatie:" true
+run_cmd "python3 --version" "Python versie controleren" true
+run_cmd "pip3 --version" "Pip versie controleren" true
+run_cmd "ls -la /opt/radiologger" "Inhoud van /opt/radiologger weergeven" true
+run_cmd "ls -la /opt/radiologger/venv/bin" "Python venv inhoud weergeven" true
+run_cmd "grep -A 5 'from app import' /opt/radiologger/setup_db.py 2>/dev/null || echo 'setup_db.py bevat geen app import of bestaat niet'" "setup_db.py import check" true
+run_cmd "grep -A 5 'from app import' /opt/radiologger/init_db.py 2>/dev/null || echo 'init_db.py bevat geen app import of bestaat niet'" "init_db.py import check" true
+run_cmd "find /opt/radiologger -name 'app.py' | xargs cat 2>/dev/null || echo 'app.py niet gevonden'" "app.py inhoud" true
 
 # Controleer of setup_db.py bestaat, anders gebruik seed_data.py
 if [ -f "setup_db.py" ]; then
-    echo "setup_db.py gevonden, database initialiseren..."
+    debug_log "setup_db.py gevonden, database initialiseren..." true
     chmod +x setup_db.py
-    sudo -u radiologger /opt/radiologger/venv/bin/python setup_db.py $use_default_flag
+    # Gebruik verbose modus om alle uitvoer te zien
+    debug_log "Python module zoekpad controleren" true
+    run_cmd "sudo -u radiologger bash -c 'cd /opt/radiologger && PYTHONPATH=/opt/radiologger python3 -c \"import sys; print(sys.path)\"'" "Python zoekpad controleren" true
+    
+    debug_log "Start database setup script met debug informatie" true
+    run_cmd "sudo -u radiologger bash -c 'cd /opt/radiologger && PYTHONPATH=/opt/radiologger /opt/radiologger/venv/bin/python -v setup_db.py $use_default_flag'" "setup_db.py uitvoeren" true
     setup_result=$?
     if [ $setup_result -ne 0 ]; then
-        echo "WAARSCHUWING: setup_db.py gaf een fout, probeer handmatige initialisatie..."
+        debug_log "WAARSCHUWING: setup_db.py gaf een fout, probeer handmatige initialisatie..." true
         # Maak een tijdelijk Python-script voor database-initialisatie
         cat > /opt/radiologger/init_db_fallback.py << 'EOL'
 #!/usr/bin/env python3
@@ -307,16 +375,17 @@ EOL
         chmod +x /opt/radiologger/init_db_fallback.py
         chown radiologger:radiologger /opt/radiologger/init_db_fallback.py
         
-        # Voer het script uit met de radiologger gebruiker
-        cd /opt/radiologger
-        sudo -u radiologger /opt/radiologger/venv/bin/python /opt/radiologger/init_db_fallback.py
+        # Voer het script uit met de radiologger gebruiker en uitgebreide debugging
+        debug_log "Voer init_db_fallback.py uit met verbose modus" true
+        run_cmd "cd /opt/radiologger" "directory wisselen" false
+        run_cmd "sudo -u radiologger bash -c 'cd /opt/radiologger && PYTHONPATH=/opt/radiologger /opt/radiologger/venv/bin/python -v /opt/radiologger/init_db_fallback.py'" "init_db_fallback.py uitvoeren" true
         
         # Verwijder het tijdelijke script
         rm -f /opt/radiologger/init_db_fallback.py
         if [ -f "seed_data.py" ]; then
-            echo "Initialiseren van basisgegevens via seed_data.py..."
-            cd /opt/radiologger
-            sudo -u radiologger /opt/radiologger/venv/bin/python seed_data.py $use_default_flag
+            debug_log "Initialiseren van basisgegevens via seed_data.py..." true
+            run_cmd "cd /opt/radiologger" "directory wisselen" false
+            run_cmd "sudo -u radiologger bash -c 'cd /opt/radiologger && PYTHONPATH=/opt/radiologger /opt/radiologger/venv/bin/python -v seed_data.py $use_default_flag'" "seed_data.py (fallback path) uitvoeren" true
         fi
     fi
 elif [ -f "seed_data.py" ]; then
@@ -352,14 +421,16 @@ EOL
     chown radiologger:radiologger /opt/radiologger/init_db_alt.py
     
     # Voer het script uit met de radiologger gebruiker
-    cd /opt/radiologger
-    sudo -u radiologger /opt/radiologger/venv/bin/python /opt/radiologger/init_db_alt.py
+    debug_log "Voer init_db_alt.py uit met verbose modus" true
+    run_cmd "cd /opt/radiologger" "directory wisselen" false
+    run_cmd "sudo -u radiologger bash -c 'cd /opt/radiologger && PYTHONPATH=/opt/radiologger /opt/radiologger/venv/bin/python -v /opt/radiologger/init_db_alt.py'" "init_db_alt.py uitvoeren" true
     
     # Verwijder het tijdelijke script
     rm -f /opt/radiologger/init_db_alt.py
     # Vul de database met basisgegevens
-    cd /opt/radiologger
-    sudo -u radiologger /opt/radiologger/venv/bin/python seed_data.py $use_default_flag
+    debug_log "Vul de database met basisgegevens via seed_data.py" true
+    run_cmd "cd /opt/radiologger" "directory wisselen" false
+    run_cmd "sudo -u radiologger bash -c 'cd /opt/radiologger && PYTHONPATH=/opt/radiologger /opt/radiologger/venv/bin/python -v seed_data.py $use_default_flag'" "seed_data.py uitvoeren" true
 else
     echo "Geen setup_db.py of seed_data.py gevonden. Initialiseer database basis tabellen..."
     
@@ -394,8 +465,9 @@ EOL
     chown radiologger:radiologger /opt/radiologger/init_db.py
     
     # Voer het script uit met de radiologger gebruiker
-    cd /opt/radiologger
-    sudo -u radiologger /opt/radiologger/venv/bin/python /opt/radiologger/init_db.py
+    debug_log "Voer init_db.py uit met verbose modus" true
+    run_cmd "cd /opt/radiologger" "directory wisselen" false
+    run_cmd "sudo -u radiologger bash -c 'cd /opt/radiologger && PYTHONPATH=/opt/radiologger /opt/radiologger/venv/bin/python -v /opt/radiologger/init_db.py'" "init_db.py uitvoeren" true
     
     # Verwijder het tijdelijke script
     rm -f /opt/radiologger/init_db.py
@@ -440,8 +512,9 @@ EOL
     chown radiologger:radiologger /opt/radiologger/create_users.py
     
     # Voer het script uit met de radiologger gebruiker
-    cd /opt/radiologger
-    sudo -u radiologger /opt/radiologger/venv/bin/python /opt/radiologger/create_users.py
+    debug_log "Voer create_users.py uit met verbose modus" true
+    run_cmd "cd /opt/radiologger" "directory wisselen" false
+    run_cmd "sudo -u radiologger bash -c 'cd /opt/radiologger && PYTHONPATH=/opt/radiologger /opt/radiologger/venv/bin/python -v /opt/radiologger/create_users.py'" "create_users.py uitvoeren" true
     
     # Verwijder het tijdelijke script
     rm -f /opt/radiologger/create_users.py
