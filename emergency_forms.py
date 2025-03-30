@@ -1,0 +1,42 @@
+from flask_wtf import FlaskForm
+from wtforms import StringField, PasswordField, BooleanField, SubmitField, SelectField, TextAreaField, HiddenField
+from wtforms.validators import DataRequired, Length, URL, Optional, Email, EqualTo
+
+class LoginForm(FlaskForm):
+    username = StringField('Gebruikersnaam', validators=[DataRequired()])
+    password = PasswordField('Wachtwoord', validators=[DataRequired()])
+    remember_me = BooleanField('Onthoud mij')
+    submit = SubmitField('Inloggen')
+
+class UserForm(FlaskForm):
+    username = StringField('Gebruikersnaam', validators=[DataRequired(), Length(min=3, max=64)])
+    password = PasswordField('Wachtwoord', validators=[DataRequired(), Length(min=6, max=128)])
+    role = SelectField('Rol', choices=[('listener', 'Listener'), ('editor', 'Editor'), ('admin', 'Admin')])
+    submit = SubmitField('Gebruiker toevoegen')
+
+class StationForm(FlaskForm):
+    name = StringField('Stationsnaam', validators=[DataRequired(), Length(min=2, max=100)])
+    recording_url = StringField('Stream URL', validators=[DataRequired(), URL()])
+    has_schedule = BooleanField('Geplande opname')
+    record_reason = TextAreaField('Reden voor opname', validators=[Optional(), Length(max=255)])
+    submit = SubmitField('Station opslaan')
+
+class DennisStationForm(FlaskForm):
+    stations = HiddenField('Geselecteerde stations')
+    submit = SubmitField('Opslaan')
+
+class TestStreamForm(FlaskForm):
+    url = StringField('Stream URL', validators=[DataRequired(), URL()])
+    submit = SubmitField('Test Stream')
+
+class SetupForm(FlaskForm):
+    admin_username = StringField('Administrator Gebruikersnaam', validators=[DataRequired(), Length(min=3, max=64)])
+    admin_password = PasswordField('Administrator Wachtwoord', validators=[DataRequired(), Length(min=6, max=128)])
+    admin_password_confirm = PasswordField('Bevestig Wachtwoord', validators=[DataRequired(), EqualTo('admin_password', message='Wachtwoorden moeten overeenkomen')])
+    
+    wasabi_access_key = StringField('Wasabi Access Key', validators=[DataRequired()])
+    wasabi_secret_key = StringField('Wasabi Secret Key', validators=[DataRequired()])
+    wasabi_bucket = StringField('Wasabi Bucket', validators=[DataRequired()])
+    wasabi_region = StringField('Wasabi Regio', validators=[DataRequired()], default='eu-central-1')
+    
+    submit = SubmitField('Setup Voltooien')
