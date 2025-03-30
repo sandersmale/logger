@@ -8,6 +8,7 @@ User=radiologger
 Group=radiologger
 WorkingDirectory=/opt/radiologger
 Environment="PATH=/opt/radiologger/venv/bin"
+Environment="HOME=/opt/radiologger"
 EnvironmentFile=/opt/radiologger/.env
 ExecStart=/opt/radiologger/venv/bin/gunicorn \
     --workers 3 \

@@ -364,6 +364,22 @@ def upload_and_remove():
     
     try:
         with app.app_context():
+            # Controleer of Wasabi configuratie aanwezig is
+            if not all([
+                app.config.get('WASABI_ENDPOINT_URL'),
+                app.config.get('WASABI_REGION'),
+                app.config.get('WASABI_ACCESS_KEY'),
+                app.config.get('WASABI_SECRET_KEY'),
+                app.config.get('WASABI_BUCKET')
+            ]):
+                logger.error("Ontbrekende Wasabi configuratie, S3 upload overgeslagen.")
+                # Controleer of setup is voltooid
+                from models import User
+                user_count = User.query.count()
+                if user_count == 0:
+                    logger.info("Setup nog niet voltooid. Vul de Wasabi gegevens in bij de eerste setup.")
+                return
+                
             # Initialize S3 client
             s3_client = boto3.client(
                 's3',

@@ -1,0 +1,28 @@
+1 is zo groot ik weet het niet
+2  Description=Radiologger Web Application                                         
+ After=network.target postgresql.service                                         
+ Wants=postgresql.service                                                        
+                                                                                 
+ [Service]                                                                       
+ User=radiologger                                                                
+ Group=radiologger                                                               
+ WorkingDirectory=/opt/radiologger                                               
+ Environment="PATH=/opt/radiologger/venv/bin"                                    
+ EnvironmentFile=/opt/radiologger/.env                                           
+ ExecStart=/opt/radiologger/venv/bin/gunicorn \                                  
+     --workers 3 \                                                               
+     --bind 0.0.0.0:5000 \                                                       
+     --log-level=info \                                                          
+     --access-logfile=/var/log/radiologger/access.log \                          
+     --error-logfile=/var/log/radiologger/error.log \                            
+     --timeout 300 \                                                             
+     main:app                                                                    
+ Restart=always                                                                  
+ RestartSec=5                                                                    
+                                                                                 
+ [Install]                                                                       
+ WantedBy=multi-user.target                                                      
+ 
+3 gedaan
+4 Environment="HOME=/opt/radiologger" ontbrak heb ik nu toegevoegd
+5 gedaan maar 502 error blijft.

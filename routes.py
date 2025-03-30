@@ -240,36 +240,52 @@ def setup():
             
             # Update de .env file met de Wasabi configuratie
             env_path = '.env'
+            prod_path = '/opt/radiologger/.env'  # Productie path
+            
+            # Bepaal welk .env bestand we moeten updaten
+            if os.path.exists(prod_path):
+                env_path = prod_path
+                
             if os.path.exists(env_path):
-                with open(env_path, 'r') as file:
-                    env_lines = file.readlines()
-                
-                # Bijwerken van Wasabi configuratie
-                wasabi_lines = {
-                    'WASABI_ACCESS_KEY': form.wasabi_access_key.data,
-                    'WASABI_SECRET_KEY': form.wasabi_secret_key.data,
-                    'WASABI_BUCKET': form.wasabi_bucket.data,
-                    'WASABI_REGION': form.wasabi_region.data,
-                    'WASABI_ENDPOINT_URL': f'https://s3.{form.wasabi_region.data}.wasabisys.com'
-                }
-                
-                # Update bestaande regels of voeg nieuwe toe
-                updated_lines = []
-                for line in env_lines:
-                    key = line.split('=')[0].strip() if '=' in line else None
-                    if key in wasabi_lines:
-                        updated_lines.append(f"{key}={wasabi_lines[key]}\n")
-                        wasabi_lines.pop(key)
-                    else:
-                        updated_lines.append(line)
-                
-                # Voeg eventuele ontbrekende Wasabi-configuratie toe
-                for key, value in wasabi_lines.items():
-                    updated_lines.append(f"{key}={value}\n")
-                
-                # Schrijf terug naar .env bestand
-                with open(env_path, 'w') as file:
-                    file.writelines(updated_lines)
+                try:
+                    # Lees het bestand
+                    with open(env_path, 'r') as file:
+                        env_lines = file.readlines()
+                    
+                    # Bijwerken van Wasabi configuratie
+                    wasabi_lines = {
+                        'WASABI_ACCESS_KEY': form.wasabi_access_key.data,
+                        'WASABI_SECRET_KEY': form.wasabi_secret_key.data,
+                        'WASABI_BUCKET': form.wasabi_bucket.data,
+                        'WASABI_REGION': form.wasabi_region.data,
+                        'WASABI_ENDPOINT_URL': f'https://s3.{form.wasabi_region.data}.wasabisys.com'
+                    }
+                    
+                    # Update bestaande regels of voeg nieuwe toe
+                    updated_lines = []
+                    for line in env_lines:
+                        key = line.split('=')[0].strip() if '=' in line else None
+                        if key in wasabi_lines:
+                            updated_lines.append(f"{key}={wasabi_lines[key]}\n")
+                            wasabi_lines.pop(key)
+                        else:
+                            updated_lines.append(line)
+                    
+                    # Voeg eventuele ontbrekende Wasabi-configuratie toe
+                    for key, value in wasabi_lines.items():
+                        updated_lines.append(f"{key}={value}\n")
+                    
+                    # Schrijf terug naar .env bestand
+                    with open(env_path, 'w') as file:
+                        file.writelines(updated_lines)
+                    
+                    # Zorg ervoor dat de bestandsrechten correct zijn in productiemodus
+                    if env_path == prod_path:
+                        os.system(f"chown radiologger:radiologger {env_path}")
+                        os.system(f"chmod 640 {env_path}")
+                except Exception as e:
+                    logger.error(f"Fout bij updaten van .env bestand: {e}")
+                    flash(f"Waarschuwing: De Wasabi configuratie kon niet worden opgeslagen in het .env bestand: {e}", "warning")
                 
                 # Update app config met nieuwe waarden
                 app.config['WASABI_ACCESS_KEY'] = form.wasabi_access_key.data
