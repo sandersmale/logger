@@ -6,8 +6,12 @@
 
 # Controleer of het script als root wordt uitgevoerd
 if [[ $EUID -ne 0 ]]; then
-   echo "Dit script moet als root worden uitgevoerd (gebruik sudo)"
-   exit 1
+   if [[ "$1" != "--replit-test" ]]; then
+      echo "Dit script moet als root worden uitgevoerd (gebruik sudo)"
+      exit 1
+   else
+      echo "Replit test modus - root check wordt overgeslagen"
+   fi
 fi
 
 echo "Radiologger uninstallatiescript voor Ubuntu 24.04"
@@ -23,7 +27,7 @@ echo "6. Geïnstalleerde pakketten verwijderen"
 echo "7. Zichzelf verwijderen (dit script)"
 echo ""
 # Check for non-interactive mode (flag --force of -f)
-if [[ "$1" == "--force" || "$1" == "-f" ]]; then
+if [[ "$1" == "--force" || "$1" == "-f" || "$2" == "--force" || "$2" == "-f" ]]; then
     echo "Automatische uninstallatie wordt uitgevoerd zonder bevestiging..."
     confirm="j"
 else

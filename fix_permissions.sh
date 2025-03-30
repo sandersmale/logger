@@ -1,87 +1,95 @@
 #!/bin/bash
-# Fix permissions script voor Radiologger
-# Dit script corrigeert de meest voorkomende permissie problemen die leiden tot 502 errors
+# Fix permissies script voor de Radiologger applicatie
+# Dit script repareert alle bestandsrechten en eigenaarschap
 
-echo "Radiologger Permissie Fix Script"
-echo "=============================="
-echo ""
-
-# Controleer of het script als root wordt uitgevoerd
+# Controleren of het script als root wordt uitgevoerd
 if [[ $EUID -ne 0 ]]; then
    echo "Dit script moet als root worden uitgevoerd (gebruik sudo)"
    exit 1
 fi
 
-# Voer permissie-fixes uit
-echo "Permissies repareren voor applicatie mappen..."
-mkdir -p /opt/radiologger
-mkdir -p /var/log/radiologger
-mkdir -p /var/lib/radiologger/recordings
-
-# Zorg ervoor dat de radiologger gebruiker bestaat
-if ! id -u radiologger &>/dev/null; then
-    echo "Radiologger gebruiker aanmaken..."
-    useradd -m radiologger -s /bin/bash
-fi
+echo "Radiologger Permissions Fix Script"
+echo "=================================="
+echo ""
 
 # Fix eigenaarschap
-echo "Eigenaarschap instellen..."
+echo "Repareren van eigenaarschap van bestanden en mappen..."
 chown -R radiologger:radiologger /opt/radiologger
 chown -R radiologger:radiologger /var/log/radiologger
 chown -R radiologger:radiologger /var/lib/radiologger
 
-# Fix permissies
-echo "Lees- en schrijfrechten instellen..."
-chmod -R 755 /opt/radiologger
-chmod -R 755 /var/log/radiologger
-chmod -R 755 /var/lib/radiologger
+# Fix bestandsrechten
+echo "Repareren van bestandsrechten..."
+chmod 755 /opt/radiologger
+chmod 755 /var/log/radiologger
+chmod 755 /var/lib/radiologger
+chmod 755 /var/lib/radiologger/recordings
 
-# Controleer en repareer SELinux contexten indien van toepassing
-if command -v sestatus &>/dev/null && sestatus | grep -q "enabled"; then
-    echo "SELinux contexten repareren..."
-    if command -v restorecon &>/dev/null; then
-        restorecon -Rv /opt/radiologger
-        restorecon -Rv /var/log/radiologger
-        restorecon -Rv /var/lib/radiologger
-    fi
-fi
-
-# Controleer socket permissies
-echo "Socket permissies controleren..."
-if netstat -tuln | grep -q ":5000"; then
-    echo "Poort 5000 in gebruik, processen opnieuw starten..."
-    systemctl restart radiologger
-    systemctl restart nginx
-fi
-
-# Log instellingen checken
-echo "Log schrijfrechten controleren..."
-touch /var/log/radiologger/test.log
-sudo -u radiologger touch /var/log/radiologger/test_user.log
-if [ $? -ne 0 ]; then
-    echo "⚠️ Radiologger gebruiker kan niet schrijven naar logs!"
-    echo "Repareren..."
-    chmod 775 /var/log/radiologger
+# Fix .env bestand
+echo "Repareren van .env bestandsrechten..."
+if [ -f /opt/radiologger/.env ]; then
+  chmod 640 /opt/radiologger/.env
+  chown radiologger:radiologger /opt/radiologger/.env
+  echo "✅ .env bestand rechten gecorrigeerd"
 else
-    echo "✅ Log schrijfrechten OK"
-    rm -f /var/log/radiologger/test.log
-    rm -f /var/log/radiologger/test_user.log
+  echo "⚠️ .env bestand niet gevonden!"
 fi
 
-# Systemd service herstarten
-echo "Radiologger service herstarten..."
-systemctl daemon-reload
-systemctl restart radiologger
-systemctl status radiologger
+# Fix Python omgeving
+echo "Repareren van Python virtual environment rechten..."
+if [ -d /opt/radiologger/venv ]; then
+  chown -R radiologger:radiologger /opt/radiologger/venv
+  chmod -R 755 /opt/radiologger/venv
+  echo "✅ Python virtual environment rechten gecorrigeerd"
+else
+  echo "⚠️ Python virtual environment niet gevonden!"
+fi
 
-# Nginx herstarten
-echo "Nginx herstarten..."
-systemctl restart nginx
-systemctl status nginx
+# Fix uitvoerbare Python scripts
+echo "Uitvoerbare bestanden controleren..."
+for script in /opt/radiologger/*.py; do
+  if [ -f "$script" ]; then
+    chmod 755 "$script"
+  fi
+done
+echo "✅ Python scripts executable gemaakt"
+
+# Fix nginx configuratie (indien aanwezig)
+if [ -f /etc/nginx/sites-available/radiologger ]; then
+  chmod 644 /etc/nginx/sites-available/radiologger
+  echo "✅ Nginx configuratie rechten gecorrigeerd"
+fi
+
+# Fix HOME directory voor de service
+echo "HOME directory repareren in de service configuratie..."
+if [ -f /etc/systemd/system/radiologger.service ]; then
+  if ! grep -q "Environment=\"HOME=/opt/radiologger\"" /etc/systemd/system/radiologger.service; then
+    # Voeg HOME toe aan de radiologger.service als het ontbreekt
+    sed -i '/\[Service\]/a Environment="HOME=/opt/radiologger"' /etc/systemd/system/radiologger.service
+    echo "✅ HOME directory in systemd service toegevoegd"
+    
+    # Herlaad systemd en restart de service
+    systemctl daemon-reload
+    systemctl restart radiologger
+  else
+    echo "✅ HOME directory is al correct ingesteld in de service"
+  fi
+else
+  echo "⚠️ Radiologger service bestand niet gevonden!"
+fi
+
+# Verificatie
+echo ""
+echo "Verificatie van rechten:"
+ls -ld /opt/radiologger
+ls -ld /var/log/radiologger
+ls -ld /var/lib/radiologger
+ls -ld /var/lib/radiologger/recordings
+if [ -f /opt/radiologger/.env ]; then
+  ls -l /opt/radiologger/.env
+fi
 
 echo ""
-echo "✅ Permissie fixes voltooid!"
-echo "Als je nog steeds 502 Bad Gateway ziet, controleer de logs met:"
-echo "sudo journalctl -u radiologger -n 50"
-echo "en"
-echo "sudo tail -n 50 /var/log/nginx/radiologger_error.log"
+echo "✅ Alle rechten zijn gerepareerd!"
+echo "Herstart de Radiologger service met: sudo systemctl restart radiologger"
+echo "Herstart Nginx met: sudo systemctl restart nginx"
