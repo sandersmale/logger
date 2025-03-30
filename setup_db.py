@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 logger = logging.getLogger(__name__)
 
 # Zorg ervoor dat we de applicatie kunnen importeren
-current_dir = os.path.abspath(os.getcwd())
+current_dir = os.path.abspath(os.getcwd() or '.')
 sys.path.insert(0, current_dir)
 
 # Probeer de applicatie te importeren, met robuuste foutafhandeling
