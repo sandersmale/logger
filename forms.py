@@ -19,16 +19,7 @@ class UserForm(FlaskForm):
 class StationForm(FlaskForm):
     name = StringField('Stationsnaam', validators=[DataRequired(), Length(min=2, max=100)])
     recording_url = StringField('Stream URL', validators=[DataRequired(), URL()])
-    always_on = BooleanField('Altijd opnemen')
     has_schedule = BooleanField('Geplande opname')
-    
-    # Schedule fields
-    schedule_start_date = DateField('Startdatum', format='%Y-%m-%d', validators=[Optional()])
-    schedule_start_hour = SelectField('Startuur', validators=[Optional()], 
-                                     choices=[(str(h), f"{h:02d}:00") for h in range(24)])
-    schedule_end_date = DateField('Einddatum', format='%Y-%m-%d', validators=[Optional()])
-    schedule_end_hour = SelectField('Einduur', validators=[Optional()], 
-                                   choices=[(str(h), f"{h:02d}:00") for h in range(24)])
     record_reason = TextAreaField('Reden voor opname', validators=[Optional(), Length(max=255)])
     submit = SubmitField('Station opslaan')
     

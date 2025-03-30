@@ -36,9 +36,18 @@ def manage_stations():
 def add_station():
     """Add a new station"""
     form = StationForm()
-    test_form = TestStreamForm()
     
     if form.validate_on_submit():
+        # Test stream before adding
+        try:
+            test_result = test_stream(form.recording_url.data)
+            if not test_result.get('status') == 'OK':
+                flash('Stream test mislukt: ' + test_result.get('error', 'Onbekende fout'), 'danger')
+                return redirect(url_for('station.add_station'))
+        except Exception as e:
+            flash('Stream test mislukt: ' + str(e), 'danger')
+            return redirect(url_for('station.add_station'))
+            
         # Check if station already exists
         if Station.query.filter_by(name=form.name.data).first():
             flash('Station met deze naam bestaat al', 'danger')
@@ -48,16 +57,20 @@ def add_station():
         station = Station(
             name=form.name.data,
             recording_url=form.recording_url.data,
-            always_on=form.always_on.data
+            always_on=not form.has_schedule.data
         )
         
         # Add schedule if specified
         if form.has_schedule.data:
-            station.schedule_start_date = form.schedule_start_date.data
-            station.schedule_start_hour = int(form.schedule_start_hour.data)
-            station.schedule_end_date = form.schedule_end_date.data
-            station.schedule_end_hour = int(form.schedule_end_hour.data)
-            station.record_reason = form.record_reason.data
+            try:
+                station.schedule_start_date = datetime.strptime(request.form['schedule_start_date'], '%Y-%m-%d').date()
+                station.schedule_start_hour = int(request.form['schedule_start_hour'])
+                station.schedule_end_date = datetime.strptime(request.form['schedule_end_date'], '%Y-%m-%d').date()
+                station.schedule_end_hour = int(request.form['schedule_end_hour'])
+                station.record_reason = form.record_reason.data
+            except (ValueError, KeyError) as e:
+                flash('Ongeldige datum/tijd waarden', 'danger')
+                return redirect(url_for('station.add_station'))
         
         try:
             db.session.add(station)
