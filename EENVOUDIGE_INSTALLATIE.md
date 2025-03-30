@@ -15,33 +15,33 @@ Deze handleiding beschrijft hoe je Radiologger eenvoudig kunt installeren op een
 ## Stap 2: Verbind met je VPS
 
 ```bash
-ssh root@68.183.3.122
+ssh root@68.183.3.122  # Vervang door jouw IP-adres
 ```
 
-Vervang `68.183.3.122` door het IP-adres van je eigen droplet.
+## Stap 3: Installatie (kies A of B)
 
-## Stap 3: Download het installatiescript
+### Optie A: Installatie in 3 commando's
+
 ```bash
-# Maak een tijdelijke map, ga er naartoe
+# 1. Maak tijdelijke map en ga er direct naartoe
 mkdir -p /tmp/radiologger && cd /tmp/radiologger
+
+# 2. Download het installatiescript direct van GitHub
+wget -O install.sh https://raw.githubusercontent.com/sandersmale/logger/main/install.sh
+
+# 3. Maak script uitvoerbaar en start direct de installatie
+chmod +x install.sh && sudo ./install.sh
 ```
 
-## Stap 4: Maak het script uitvoerbaar
+### Optie B: Turbo installatie (1 commando, alles-in-één)
+
 ```bash
-# Download het script
-wget https://raw.githubusercontent.com/sandersmale/logger/main/install.sh
-
-# Maak het script uitvoerbaar
-chmod +x install.sh
+bash -c "mkdir -p /tmp/radiologger && cd /tmp/radiologger && wget -O install.sh https://raw.githubusercontent.com/sandersmale/logger/main/install.sh && chmod +x install.sh && sudo ./install.sh"
 ```
 
-## Stap 5: Voer het installatiescript uit
-```bash
-# Start de installatie
-sudo ./install.sh
-```
+⚡ Dat is alles! Het script neemt het vanaf hier over.
 
-## Stap 6: Volg de prompts in het script
+## Stap 4: Volg de prompts in het script
 
 Het script zal je vragen om enkele gegevens:
 
@@ -59,7 +59,7 @@ De andere waarden worden automatisch ingesteld:
 - Dennis API URL is vooraf ingesteld
 - Omroep LvC URL is vooraf ingesteld
 
-## Stap 7: Test de installatie
+## Stap 5: Test de installatie
 
 Na succesvolle installatie kun je de applicatie testen:
 
@@ -71,7 +71,7 @@ Na succesvolle installatie kun je de applicatie testen:
 
 **BELANGRIJK:** Verander deze wachtwoorden direct na de eerste inlog!
 
-## Stap 8: DNS configuratie
+## Stap 6: DNS configuratie
 
 Zorg dat het domein `logger.pilotradio.nl` naar het IP-adres van je VPS wijst door een A-record in te stellen bij je DNS provider.
 
