@@ -19,6 +19,8 @@ echo "2. Nginx configuratie verwijderen"
 echo "3. PostgreSQL database verwijderen"
 echo "4. Radiologger gebruiker verwijderen"
 echo "5. Alle gemaakte mappen en bestanden verwijderen"
+echo "6. Geïnstalleerde pakketten verwijderen"
+echo "7. Zichzelf verwijderen (dit script)"
 echo ""
 # Check for non-interactive mode (flag --force of -f)
 if [[ "$1" == "--force" || "$1" == "-f" ]]; then
@@ -89,6 +91,82 @@ if crontab -l 2>/dev/null | grep -q radiologger; then
     echo "✅ Crontab entries verwijderd"
 fi
 
+# Verwijder de geïnstalleerde pakketten
+echo "Geïnstalleerde pakketten verwijderen..."
+# Lijst van pakketten die mogelijk geïnstalleerd zijn voor radiologger
+INSTALLED_PACKAGES=""
+
+# Controleer Python-gerelateerde pakketten
+for pkg in python3 python3-pip python3-venv python3-dev; do
+    if dpkg -l | grep -q "^ii  $pkg "; then
+        INSTALLED_PACKAGES="$INSTALLED_PACKAGES $pkg"
+    fi
+done
+
+# Controleer PostgreSQL
+for pkg in postgresql postgresql-contrib postgresql-client; do
+    if dpkg -l | grep -q "^ii  $pkg "; then
+        INSTALLED_PACKAGES="$INSTALLED_PACKAGES $pkg"
+    fi
+done
+
+# Controleer webserver en ssl gerelateerde pakketten
+for pkg in nginx certbot python3-certbot-nginx; do
+    if dpkg -l | grep -q "^ii  $pkg "; then
+        INSTALLED_PACKAGES="$INSTALLED_PACKAGES $pkg"
+    fi
+done
+
+# Controleer multimedia en ontwikkelingstools
+for pkg in ffmpeg build-essential libpq-dev; do
+    if dpkg -l | grep -q "^ii  $pkg "; then
+        INSTALLED_PACKAGES="$INSTALLED_PACKAGES $pkg"
+    fi
+done
+
+# Controleer extra tools
+for pkg in htop curl vim rsync; do
+    if dpkg -l | grep -q "^ii  $pkg "; then
+        INSTALLED_PACKAGES="$INSTALLED_PACKAGES $pkg"
+    fi
+done
+
+# Alleen verwijderen als de gebruiker dit expliciet wil
+if [[ -n "$INSTALLED_PACKAGES" ]]; then
+    echo "De volgende pakketten zijn geïnstalleerd en kunnen verwijderd worden:"
+    echo "$INSTALLED_PACKAGES"
+    
+    if [[ "$confirm" == "j" && "$1" == "--purge-all" ]]; then
+        echo "Alle pakketten verwijderen..."
+        apt-get -y purge $INSTALLED_PACKAGES
+        apt-get -y autoremove --purge
+        echo "✅ Alle geïnstalleerde pakketten zijn verwijderd"
+    else
+        echo "Om alle pakketten te verwijderen, voer het script uit met: sudo bash uninstall.sh --purge-all"
+        echo "⚠️ Pakketten niet verwijderd: voeg --purge-all toe om ze te verwijderen"
+    fi
+else
+    echo "Geen specifieke pakketten gevonden die verwijderd moeten worden"
+fi
+
 echo ""
 echo "✅ Radiologger is volledig verwijderd van het systeem!"
 echo "Indien gewenst kun je nu veilig opnieuw installeren."
+
+# Verwijder het script zelf als laatste
+SCRIPT_PATH="$(readlink -f "$0")"
+echo "Dit script zal zichzelf nu verwijderen..."
+# Maak een tijdelijk script dat het eigenlijke script verwijdert
+TMP_SCRIPT=$(mktemp)
+cat > "$TMP_SCRIPT" << EOL
+#!/bin/bash
+# Wacht even zodat het hoofdscript kan afsluiten
+sleep 1
+# Verwijder het hoofdscript
+rm -f "$SCRIPT_PATH"
+# Verwijder dit tijdelijke script
+rm -f "\$0"
+EOL
+chmod +x "$TMP_SCRIPT"
+# Voer het tijdelijke script uit in de achtergrond
+"$TMP_SCRIPT" &
