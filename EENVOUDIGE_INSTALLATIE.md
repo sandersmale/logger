@@ -36,7 +36,7 @@ chmod +x install.sh && sudo ./install.sh
 ### Optie B: Turbo installatie (1 commando, alles-in-één)
 
 ```bash
-bash -c "mkdir -p /tmp/radiologger && cd /tmp/radiologger && wget -O install.sh https://raw.githubusercontent.com/sandersmale/logger/main/install.sh && chmod +x install.sh && sudo ./install.sh"
+sudo bash -c "mkdir -p /tmp/radiologger && cd /tmp/radiologger && wget -O install.sh https://raw.githubusercontent.com/sandersmale/logger/main/install.sh && chmod +x install.sh && bash install.sh"
 ```
 
 ⚡ Dat is alles! Het script neemt het vanaf hier over.
