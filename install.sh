@@ -1,9 +1,18 @@
 #!/bin/bash
-# Radiologger installatiescript voor Ubuntu 24.04
-# Dit script installeert en configureert de Radiologger applicatie
+# Radiologger installatiescript voor Ubuntu 22.04/24.04
+# BELANGRIJK: Dit script gaat ervan uit dat alle benodigde software al is geïnstalleerd
+# Vooraf moeten deze pakketten geïnstalleerd zijn:
+# - python3, python3-venv, python3-pip
+# - ffmpeg
+# - nginx
+# - postgresql, postgresql-contrib
+# - git, curl, wget
 #
-# Aanbevolen commando voor directe installatie:
-# sudo bash -c "mkdir -p /tmp/radiologger && chmod 700 /tmp/radiologger && cd /tmp/radiologger && wget -O install.sh https://raw.githubusercontent.com/sandersmale/logger/main/install.sh && chmod +x install.sh && bash install.sh"
+# Aanbevolen installatie:
+# 1. Eerst benodigde software installeren:
+#    sudo apt update && sudo apt install -y python3 python3-venv python3-pip ffmpeg nginx postgresql postgresql-contrib git curl wget
+# 2. Dan dit script uitvoeren:
+#    sudo bash install.sh
 #
 # Versie: 2.0 - Verbeterd met automatische controle van kritieke bestanden
 
@@ -176,51 +185,38 @@ ssl_response="j"
 echo "Alle benodigde gegevens ontvangen. De installatie zal nu zonder verdere onderbrekingen verlopen..."
 echo ""
 
-echo "Stap 1: Systeem updaten en pakketten installeren..."
-apt update
-apt upgrade -y
-
-# Controleer of er een lijst van benodigde software is
-if [ -f "benodigde_software.txt" ]; then
-    echo "Benodigde softwarelijst gevonden. Installeren van vermelde pakketten..."
-    # Lees het bestand en installeer elk pakket
-    mapfile -t pakketten < benodigde_software.txt
-    for pakket in "${pakketten[@]}"; do
-        if [ -n "$pakket" ] && [[ ! "$pakket" =~ ^# ]]; then  # Sla lege regels en commentaar over
-            echo "Installeren van $pakket..."
-            apt install -y "$pakket"
-        fi
-    done
-else
-    echo "Geen benodigde_software.txt gevonden. Installeren van standaard pakketten..."
-    
-    # Installeer nieuwste Python-gerelateerde pakketten
-    apt install -y python3 python3-pip python3-venv python3-dev
-    
-    # Controleer of PostgreSQL 16 beschikbaar is en installeer het
-    if apt-cache show postgresql-16 &> /dev/null; then
-        echo "PostgreSQL 16 beschikbaar, installeren..."
-        apt install -y postgresql-16 postgresql-contrib-16 postgresql-client-16
-    else
-        echo "PostgreSQL 16 niet beschikbaar, installeren van nieuwste beschikbare versie..."
-        apt install -y postgresql postgresql-contrib
-    fi
-    
-    # Multimedia tools
-    apt install -y ffmpeg
-    
-    # Webserver
-    apt install -y nginx
-    
-    # SSL certificaten
-    apt install -y certbot python3-certbot-nginx
-    
-    # Ontwikkelingstools
-    apt install -y build-essential libpq-dev git
-    
-    # Extra tools die handig kunnen zijn voor beheer
-    apt install -y htop curl vim rsync
+echo "Stap 1: Controleren of vereiste pakketten aanwezig zijn..."
+# Controleer of python3 aanwezig is
+if ! command -v python3 &> /dev/null; then
+    echo "⚠️ Python3 niet geïnstalleerd! Installeer met: sudo apt install -y python3 python3-venv python3-pip"
+    exit 1
 fi
+
+# Controleer of ffmpeg aanwezig is
+if ! command -v ffmpeg &> /dev/null; then
+    echo "⚠️ ffmpeg niet geïnstalleerd! Installeer met: sudo apt install -y ffmpeg"
+    exit 1
+fi
+
+# Controleer of nginx aanwezig is
+if ! command -v nginx &> /dev/null; then
+    echo "⚠️ nginx niet geïnstalleerd! Installeer met: sudo apt install -y nginx"
+    exit 1
+fi
+
+# Controleer of PostgreSQL aanwezig is
+if ! command -v psql &> /dev/null; then
+    echo "⚠️ PostgreSQL niet geïnstalleerd! Installeer met: sudo apt install -y postgresql postgresql-contrib"
+    exit 1
+fi
+
+# Controleer of git aanwezig is
+if ! command -v git &> /dev/null; then
+    echo "⚠️ git niet geïnstalleerd! Installeer met: sudo apt install -y git"
+    exit 1
+fi
+
+echo "✅ Alle benodigde pakketten zijn aanwezig"
 
 # Openssh-server configuratie automatiseren (geen prompts)
 export DEBIAN_FRONTEND=noninteractive

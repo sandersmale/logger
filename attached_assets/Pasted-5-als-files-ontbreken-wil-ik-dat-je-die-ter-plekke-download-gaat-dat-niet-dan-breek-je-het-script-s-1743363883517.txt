@@ -1,0 +1,26 @@
+5 als files ontbreken wil ik dat je die ter plekke download, gaat dat niet dan breek je het script sowieso af.
+verder wil ik dat je deze inhoud gewoon in het instal.sh script plempt dat script deed het toch al niet kunnen we net zo goed een compleet nieuwe maken emt info waar we meer vertrouwen in hebben.
+ Mar 30 19:37:19 vpn gunicorn[890]: INFO:apscheduler.scheduler:Adding job tentat>
+ Mar 30 19:37:19 vpn gunicorn[890]: INFO:apscheduler.scheduler:Adding job tentat>
+ Mar 30 19:37:19 vpn gunicorn[890]: INFO:apscheduler.scheduler:Adding job tentat>
+ Mar 30 19:37:19 vpn gunicorn[890]: INFO:apscheduler.scheduler:Adding job tentat>
+ Mar 30 19:37:19 vpn gunicorn[889]: INFO:apscheduler.scheduler:Adding job tentat>
+ Mar 30 19:37:19 vpn gunicorn[889]: INFO:apscheduler.scheduler:Adding job tentat>
+ Mar 30 19:37:19 vpn gunicorn[889]: INFO:apscheduler.scheduler:Adding job tentat>
+ Mar 30 19:37:19 vpn gunicorn[891]: INFO:apscheduler.scheduler:Adding job tentat>
+ Mar 30 19:37:19 vpn gunicorn[889]: INFO:apscheduler.scheduler:Adding job tentat>
+ Mar 30 19:37:19 vpn gunicorn[889]: INFO:apscheduler.scheduler:Added job "start_>
+ Mar 30 19:37:19 vpn gunicorn[889]: INFO:apscheduler.scheduler:Added job "upload>
+ Mar 30 19:37:19 vpn gunicorn[889]: INFO:apscheduler.scheduler:Added job "downlo>
+ Mar 30 19:37:19 vpn gunicorn[889]: INFO:apscheduler.scheduler:Added job "cleanu>
+ Mar 30 19:37:19 vpn gunicorn[889]: INFO:apscheduler.scheduler:Added job "prep_f>
+ Mar 30 19:37:19 vpn gunicorn[889]: INFO:apscheduler.scheduler:Scheduler started 
+ Mar 30 19:37:19 vpn gunicorn[891]: INFO:apscheduler.scheduler:Adding job tentat>
+ Mar 30 19:37:19 vpn gunicorn[890]: INFO:apscheduler.scheduler:Adding job tentat>
+ Mar 30 19:37:19 vpn gunicorn[891]: INFO:apscheduler.scheduler:Adding job tentat>
+ Mar 30 19:37:19 vpn gunicorn[891]: INFO:apscheduler.scheduler:Adding job tentat>
+ Mar 30 19:37:19 vpn gunicorn[891]: INFO:apscheduler.scheduler:Adding job tentat>
+ Mar 30 19:37:19 vpn gunicorn[890]: INFO:apscheduler.scheduler:Added job "start_>
+ Mar 30 19:37:19 vpn gunicorn[890]: INFO:apscheduler.scheduler:Added job "upload>
+ Mar 30 19:37:19 vpn gunicorn[891]: INFO:apscheduler.scheduler:Added job "start_>
+ 

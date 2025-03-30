@@ -1,135 +1,65 @@
-# Radiologger Eenvoudige Installatie Instructies
+# Radiologger - Eenvoudige Installatie
 
-Deze handleiding beschrijft hoe je Radiologger eenvoudig kunt installeren op een Digital Ocean Ubuntu 24.04 VPS.
+Deze handleiding geeft je een simpele, stapsgewijze installatiemethode voor de Radiologger op Ubuntu 22.04/24.04 servers.
 
-## Stap 1: Maak een VPS (Droplet) aan op Digital Ocean
+## Stap 1: Benodigde software installeren
 
-1. Log in op je [Digital Ocean account](https://cloud.digitalocean.com/)
-2. Klik op "Create" → "Droplets"
-3. Selecteer:
-   - **Ubuntu 24.04 (LTS)**
-   - Basic plan (minimaal 2GB RAM aanbevolen)
-   - Datacenter dichtbij je gebruikers (bijv. Amsterdam)
-   - Authenticatie via SSH key of wachtwoord
-
-## Stap 2: Verbind met je VPS
+Eerst moeten we alle benodigde software installeren. Voer dit commando uit als root:
 
 ```bash
-ssh root@68.183.3.122  # Vervang door jouw IP-adres
+sudo apt update && sudo apt install -y python3 python3-venv python3-pip ffmpeg nginx postgresql postgresql-contrib git curl wget build-essential libpq-dev
 ```
 
-## Stap 3: Installatie (kies A of B)
+Dit installeert:
+- Python en benodigde tools
+- ffmpeg (voor audio conversie)
+- nginx (webserver)
+- PostgreSQL (database)
+- Overige benodigde hulpprogramma's
 
-### Optie A: Installatie in 3 commando's
+## Stap 2: Radiologger installeren
+
+Nu kun je het installatiescript downloaden en uitvoeren. Dit script zal:
+- De Radiologger applicatie downloaden
+- Alle nodige bestanden controleren en eventueel ontbrekende bestanden downloaden
+- De database instellen
+- Services configureren
+- Alles starten
+
+Voer uit:
 
 ```bash
-# 1. Maak tijdelijke map en ga er direct naartoe
-mkdir -p /tmp/radiologger && cd /tmp/radiologger
-
-# 2. Download het installatiescript direct van GitHub
-wget -O install.sh https://raw.githubusercontent.com/sandersmale/logger/main/install.sh
-
-# 3. Maak script uitvoerbaar en start direct de installatie
-chmod +x install.sh && sudo ./install.sh
+sudo bash -c "mkdir -p /tmp/radiologger && chmod 700 /tmp/radiologger && cd /tmp/radiologger && wget -O install.sh https://raw.githubusercontent.com/sandersmale/logger/main/install.sh && chmod 700 install.sh && bash install.sh"
 ```
 
-### Optie B: Turbo installatie (1 commando, alles-in-één, veiligere versie)
+Tijdens de installatie zul je de volgende zaken moeten invoeren:
+1. Een wachtwoord voor de PostgreSQL database gebruiker
+2. De domeinnaam van je server (bijvoorbeeld logger.pilotradio.nl)
+3. Een e-mailadres voor SSL certificaten
+4. Of je standaard radiostations wilt importeren
 
-```bash
-sudo bash -c "mkdir -p /tmp/radiologger && chmod 700 /tmp/radiologger && cd /tmp/radiologger && wget -O install.sh https://raw.githubusercontent.com/sandersmale/logger/main/install.sh && chmod +x install.sh && bash install.sh"
-```
+## Stap 3: Inloggen en configureren
 
-⚡ Dat is alles! Het script neemt het vanaf hier over.
+Na de installatie kun je inloggen op de webinterface via je browser:
+- http://[jouw-server-ip]
 
-## Stap 4: Volg de prompts in het script
-
-Het script zal je vragen om enkele gegevens:
-
-1. Bevestiging om door te gaan (type 'j')
-2. Database wachtwoord voor de radiologger gebruiker
-3. Wasabi credentials:
-   - Wasabi access key
-   - Wasabi secret key
-   - Wasabi bucket naam
-   - Wasabi regio (of accepteer de standaardwaarde eu-central-1)
-4. Of je een SSL certificaat wilt genereren (aanbevolen, type 'j')
-
-De andere waarden worden automatisch ingesteld:
-- De geheime sleutel wordt automatisch gegenereerd
-- Dennis API URL is vooraf ingesteld
-- Omroep LvC URL is vooraf ingesteld
-
-## Stap 5: Test de installatie
-
-Na succesvolle installatie kun je de applicatie testen:
-
-1. Bezoek `https://logger.pilotradio.nl` of `http://68.183.3.122` in je browser
-2. Log in met één van de volgende accounts:
-   - Admin: gebruikersnaam: `admin`, wachtwoord: `radioadmin`
-   - Editor: gebruikersnaam: `editor`, wachtwoord: `radioeditor`
-   - Luisteraar: gebruikersnaam: `luisteraar`, wachtwoord: `radioluisteraar`
-
-**BELANGRIJK:** Verander deze wachtwoorden direct na de eerste inlog!
-
-## Stap 6: DNS configuratie
-
-Zorg dat het domein `logger.pilotradio.nl` naar het IP-adres van je VPS wijst door een A-record in te stellen bij je DNS provider.
+Bij het eerste gebruik moet je:
+1. Een administrator account aanmaken
+2. De Wasabi S3 opslag configureren (indien gewenst)
 
 ## Problemen oplossen
 
-Als je problemen ondervindt tijdens de installatie:
+Als je een '502 Bad Gateway' fout ziet, voer dan het diagnose script uit:
 
-1. Check de logs:
-   ```bash
-   journalctl -u radiologger
-   ```
-
-2. Controleer of de services draaien:
-   ```bash
-   systemctl status radiologger
-   systemctl status nginx
-   ```
-
-3. Bekijk de Nginx error logs:
-   ```bash
-   tail -f /var/log/nginx/error.log
-   ```
-
-4. Controleer de applicatie logs:
-   ```bash
-   tail -f /var/log/radiologger/error.log
-   ```
-
-### Als wget niet werkt:
 ```bash
-# Installeer wget eerst
-sudo apt update
-sudo apt install -y wget
+sudo bash /opt/radiologger/diagnose_502.sh
 ```
 
-### Als het script niet uitvoerbaar is:
-```bash
-# Controleer of het script is gedownload
-ls -l install.sh
+Dit script controleert en repareert automatisch veel voorkomende problemen.
 
-# Probeer opnieuw uitvoerbaar te maken
-sudo chmod +x install.sh
-```
+## Belangrijke locaties
 
-### Als het script faalt:
-1. Controleer of je internetverbinding werkt
-2. Controleer of je voldoende schijfruimte hebt: `df -h`
-3. Bekijk de installatie logbestanden: `cat /tmp/radiologger_install_debug.log`
-4. Bekijk de database setup logs: `cat /tmp/radiologger_db_setup.log`
-5. Bekijk de applicatie logbestanden: `tail -f /var/log/radiologger/error.log`
-
-Voor meer gedetailleerde instructies, zie [INSTALL.md](INSTALL.md)
-
-## Systeem updates
-
-Om in de toekomst updates van GitHub te krijgen:
-
-```bash
-cd /opt/radiologger
-git pull
-systemctl restart radiologger
+- Applicatie bestanden: `/opt/radiologger/`
+- Log bestanden: `/var/log/radiologger/`
+- Opnames: `/var/lib/radiologger/recordings/`
+- Database configuratie: `/opt/radiologger/.env`
