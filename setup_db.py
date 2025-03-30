@@ -125,12 +125,31 @@ def setup_database():
         return False
 
 def add_default_dennis_stations():
-    """Voeg standaard Dennis stations toe als ze niet bestaan"""
+    """Voeg Dennis stations toe van de API"""
     try:
         # Dit wordt reeds binnen app.app_context aangeroepen door de hoofdfunctie
         # dus we hoeven niet nog een keer app.app_context() te gebruiken
         if DennisStation.query.count() == 0:
-            logger.info("Toevoegen van standaard Dennis stations")
+            logger.info("Ophalen en toevoegen van Dennis stations van de API")
+            
+            # Importeer de refresh_dennis_api functie uit api_integrations
+            try:
+                from api_integrations import refresh_dennis_api
+                
+                # Roep de functie aan om de Dennis API data op te halen
+                result = refresh_dennis_api()
+                
+                if result['success']:
+                    logger.info(f"Dennis API data succesvol opgehaald: {result['added']} stations toegevoegd, {result['updated']} bijgewerkt")
+                    return True
+                else:
+                    logger.error(f"Fout bij ophalen Dennis API data: {result['error']}")
+                    # Ga door met fallback hieronder als API ophalen mislukt
+            except Exception as import_error:
+                logger.error(f"Kon refresh_dennis_api niet importeren of uitvoeren: {import_error}")
+                
+            # Fallback: voeg standaard stations toe als de API niet beschikbaar is
+            logger.warning("Gebruik fallback lijst van Dennis stations")
             dennis_stations = [
                 {"folder": "1001", "name": "Radio 10", "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/RADIO10.mp3"},
                 {"folder": "538", "name": "Radio 538", "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/RADIO538.mp3"},
@@ -149,7 +168,7 @@ def add_default_dennis_stations():
                 db.session.add(station)
             
             db.session.commit()
-            logger.info(f"{len(dennis_stations)} standaard Dennis stations toegevoegd")
+            logger.info(f"{len(dennis_stations)} fallback Dennis stations toegevoegd")
         else:
             logger.info("Dennis stations bestaan al")
         return True

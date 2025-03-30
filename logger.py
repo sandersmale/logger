@@ -23,7 +23,7 @@ def start_scheduler(scheduler_instance):
         'cron',
         hour='*',
         minute=0,  # Run at exactly the hour mark
-        second=1,  # Slight delay to ensure we're in the new hour
+        second=0,  # Exact op het hele uur (XX:00:00)
         id='start_scheduled_recordings',
         replace_existing=True
     )
@@ -40,7 +40,7 @@ def start_scheduler(scheduler_instance):
         download_omroeplvc,
         'cron',
         hour='*',
-        minute=5,  # Run 5 minutes after the hour
+        minute=8,  # Run 8 minutes after the hour
         id='download_omroeplvc',
         replace_existing=True
     )
@@ -64,7 +64,7 @@ def start_scheduler(scheduler_instance):
     )
 
 def prep_for_recording():
-    """Check if the system is ready for recording and start recordings if needed"""
+    """Check if the system is ready for recording"""
     logger.info("🔄 PREP-modus gestart")
     
     # Check disk space
@@ -89,13 +89,8 @@ def prep_for_recording():
         logger.error(f"⚠️ ffmpeg test exception: {e}")
         return {'status': 'error', 'message': f'ffmpeg test exception: {e}'}
     
-    # Start scheduled and always-on recordings immediately after startup
-    logger.info("🚀 Starten van geplande en altijd-aan opnames bij eerste opstart")
-    try:
-        # Roep start_scheduled_recordings aan om direct te beginnen met opnemen
-        start_scheduled_recordings()
-    except Exception as e:
-        logger.error(f"⚠️ Fout bij starten opnames: {e}")
+    # GEEN automatische start van opnames - ze starten automatisch op het hele uur (XX:00:00)
+    logger.info("✅ Systeem gereed voor opnames. Opnames starten automatisch op het hele uur (XX:00:00)")
     
     logger.info("✅ PREP voltooid")
     return {'status': 'ok', 'message': 'PREP voltooid'}
@@ -588,7 +583,8 @@ def download_omroeplvc():
     """Download recordings from Omroep Land van Cuijk
     
     This task should run 8 minutes after each hour to download the previous hour's recording
-    from Omroep Land van Cuijk's archive.
+    from Omroep Land van Cuijk's archive. The 8-minute delay is required to ensure the
+    recording is available in their archive system after broadcast completion.
     """
     logger.info("⬇️ Starting Omroep LvC download task")
     

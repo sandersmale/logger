@@ -35,7 +35,7 @@ def initialize_scheduler():
             'cron',
             hour='*',
             minute=0,
-            second=1,
+            second=0,  # Exact op het hele uur (XX:00:00)
             id='hourly_check',
             replace_existing=True
         )
@@ -546,7 +546,8 @@ def download_omroeplvc():
     """Download recordings from Omroep Land van Cuijk
     
     This task runs 8 minutes after each hour to download the previous hour's recording
-    from Omroep Land van Cuijk's archive.
+    from Omroep Land van Cuijk's archive. The 8-minute delay is required to ensure the
+    recording is available in their archive system after broadcast completion.
     """
     with app.app_context():
         try:
