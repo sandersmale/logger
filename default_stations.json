@@ -12,17 +12,6 @@
     },
     {
         "id": 2,
-        "name": "gevonden voorwerpen",
-        "user_defined_url": "http://stream.iceradio.nl:80/richard",
-        "recording_url": "http://stream.iceradio.nl:80/richard",
-        "always_on": 0,
-        "schedule_start_date": "2025-02-10",
-        "schedule_start_hour": 20,
-        "schedule_end_date": "2025-02-10",
-        "schedule_end_hour": 22
-    },
-    {
-        "id": 3,
         "name": "NPO Radio 2",
         "user_defined_url": "https://icecast.omroep.nl/radio2-bb-mp3",
         "recording_url": "https://icecast.omroep.nl/radio2-bb-mp3",
@@ -33,7 +22,7 @@
         "schedule_end_hour": null
     },
     {
-        "id": 4,
+        "id": 3,
         "name": "NPO 3FM",
         "user_defined_url": "https://icecast.omroep.nl/3fm-bb-mp3",
         "recording_url": "https://icecast.omroep.nl/3fm-bb-mp3",
@@ -44,7 +33,7 @@
         "schedule_end_hour": null
     },
     {
-        "id": 5,
+        "id": 4,
         "name": "NPO Klassiek",
         "user_defined_url": "https://icecast.omroep.nl/radio4-bb-mp3",
         "recording_url": "https://icecast.omroep.nl/radio4-bb-mp3",
@@ -55,7 +44,7 @@
         "schedule_end_hour": null
     },
     {
-        "id": 6,
+        "id": 5,
         "name": "NPO Radio 5",
         "user_defined_url": "https://icecast.omroep.nl/radio5-bb-mp3",
         "recording_url": "https://icecast.omroep.nl/radio5-bb-mp3",
@@ -66,7 +55,7 @@
         "schedule_end_hour": null
     },
     {
-        "id": 7,
+        "id": 6,
         "name": "BNR",
         "user_defined_url": "https://stream.bnr.nl/bnr_mp3_128_20",
         "recording_url": "https://stream.bnr.nl/bnr_mp3_128_20",
@@ -77,10 +66,10 @@
         "schedule_end_hour": null
     },
     {
-        "id": 8,
+        "id": 7,
         "name": "Veronica",
-        "user_defined_url": "https://playerservices.streamtheworld.com/api/livestream-redirect/VERONICA.mp3",
-        "recording_url": "https://playerservices.streamtheworld.com/api/livestream-redirect/VERONICA.mp3",
+        "user_defined_url": "https://22193.live.streamtheworld.com/VERONICA.mp3",
+        "recording_url": "https://22193.live.streamtheworld.com/VERONICA.mp3",
         "always_on": 1,
         "schedule_start_date": null,
         "schedule_start_hour": null,
@@ -88,7 +77,7 @@
         "schedule_end_hour": null
     },
     {
-        "id": 9,
+        "id": 8,
         "name": "Kink",
         "user_defined_url": "https://25333.live.streamtheworld.com:443/KINK_SC",
         "recording_url": "https://25333.live.streamtheworld.com:443/KINK_SC",
@@ -99,7 +88,7 @@
         "schedule_end_hour": null
     },
     {
-        "id": 10,
+        "id": 9,
         "name": "Studio Brussel",
         "user_defined_url": "http://icecast.vrtcdn.be/stubru-high.mp3",
         "recording_url": "http://icecast.vrtcdn.be/stubru-high.mp3",
@@ -110,7 +99,7 @@
         "schedule_end_hour": null
     },
     {
-        "id": 11,
+        "id": 10,
         "name": "Radio Rijnmond",
         "user_defined_url": "http://d2e9xgjjdd9cr5.cloudfront.net/icecast/rijnmond/radio-mp3",
         "recording_url": "http://d2e9xgjjdd9cr5.cloudfront.net/icecast/rijnmond/radio-mp3",
@@ -121,7 +110,7 @@
         "schedule_end_hour": null
     },
     {
-        "id": 12,
+        "id": 11,
         "name": "Radio Gelderland",
         "user_defined_url": "https://d2od87akyl46nm.cloudfront.net/icecast/omroepgelderland/radiogelderland",
         "recording_url": "https://d2od87akyl46nm.cloudfront.net/icecast/omroepgelderland/radiogelderland",
