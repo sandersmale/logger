@@ -92,37 +92,52 @@ echo "Stap 1: Systeem updaten en pakketten installeren..."
 apt update
 apt upgrade -y
 
-# Installeer nieuwste Python-gerelateerde pakketten
-apt install -y python3 python3-pip python3-venv python3-dev
-
-# Controleer of PostgreSQL 16 beschikbaar is en installeer het
-if apt-cache show postgresql-16 &> /dev/null; then
-    echo "PostgreSQL 16 beschikbaar, installeren..."
-    apt install -y postgresql-16 postgresql-contrib-16 postgresql-client-16
+# Controleer of er een lijst van benodigde software is
+if [ -f "benodigde_software.txt" ]; then
+    echo "Benodigde softwarelijst gevonden. Installeren van vermelde pakketten..."
+    # Lees het bestand en installeer elk pakket
+    mapfile -t pakketten < benodigde_software.txt
+    for pakket in "${pakketten[@]}"; do
+        if [ -n "$pakket" ] && [[ ! "$pakket" =~ ^# ]]; then  # Sla lege regels en commentaar over
+            echo "Installeren van $pakket..."
+            apt install -y "$pakket"
+        fi
+    done
 else
-    echo "PostgreSQL 16 niet beschikbaar, installeren van nieuwste beschikbare versie..."
-    apt install -y postgresql postgresql-contrib
+    echo "Geen benodigde_software.txt gevonden. Installeren van standaard pakketten..."
+    
+    # Installeer nieuwste Python-gerelateerde pakketten
+    apt install -y python3 python3-pip python3-venv python3-dev
+    
+    # Controleer of PostgreSQL 16 beschikbaar is en installeer het
+    if apt-cache show postgresql-16 &> /dev/null; then
+        echo "PostgreSQL 16 beschikbaar, installeren..."
+        apt install -y postgresql-16 postgresql-contrib-16 postgresql-client-16
+    else
+        echo "PostgreSQL 16 niet beschikbaar, installeren van nieuwste beschikbare versie..."
+        apt install -y postgresql postgresql-contrib
+    fi
+    
+    # Multimedia tools
+    apt install -y ffmpeg
+    
+    # Webserver
+    apt install -y nginx
+    
+    # SSL certificaten
+    apt install -y certbot python3-certbot-nginx
+    
+    # Ontwikkelingstools
+    apt install -y build-essential libpq-dev git
+    
+    # Extra tools die handig kunnen zijn voor beheer
+    apt install -y htop curl vim rsync
 fi
 
 # Openssh-server configuratie automatiseren (geen prompts)
 export DEBIAN_FRONTEND=noninteractive
 echo 'openssh-server openssh-server/sshd_config_backup boolean true' | debconf-set-selections
 echo 'openssh-server openssh-server/sshd_config select keep_current' | debconf-set-selections
-
-# Multimedia tools
-apt install -y ffmpeg
-
-# Webserver
-apt install -y nginx
-
-# SSL certificaten
-apt install -y certbot python3-certbot-nginx
-
-# Ontwikkelingstools
-apt install -y build-essential libpq-dev git
-
-# Extra tools die handig kunnen zijn voor beheer
-apt install -y htop curl vim rsync
 
 echo ""
 echo "Stap 2: PostgreSQL database instellen..."
@@ -254,13 +269,62 @@ else
     echo "Voorbeeld stations worden gebruikt."
 fi
 
-# Controleer of het setup_db.py script bestaat, anders gebruik main.py
+# Controleer of setup_db.py bestaat, anders gebruik seed_data.py
 if [ -f "setup_db.py" ]; then
-    sudo -u radiologger /opt/radiologger/venv/bin/python setup_db.py
-else
-    echo "setup_db.py niet gevonden, initialiseer database via main.py..."
-    sudo -u radiologger /opt/radiologger/venv/bin/flask db upgrade
+    echo "setup_db.py gevonden, database initialiseren..."
+    chmod +x setup_db.py
+    sudo -u radiologger /opt/radiologger/venv/bin/python setup_db.py $use_default_flag
+    setup_result=$?
+    if [ $setup_result -ne 0 ]; then
+        echo "WAARSCHUWING: setup_db.py gaf een fout, probeer handmatige initialisatie..."
+        # Initialiseer tabel structuur direct met db.create_all()
+        sudo -u radiologger /opt/radiologger/venv/bin/python -c "
+from app import db, app
+with app.app_context():
+    db.create_all()
+print('✅ Database tabellen aangemaakt')
+"
+        if [ -f "seed_data.py" ]; then
+            echo "Initialiseren van basisgegevens via seed_data.py..."
+            sudo -u radiologger /opt/radiologger/venv/bin/python seed_data.py $use_default_flag
+        fi
+    fi
+elif [ -f "seed_data.py" ]; then
+    echo "setup_db.py niet gevonden, maar seed_data.py wel. Database initialiseren..."
+    # Initialiseer tabel structuur direct met db.create_all()
+    sudo -u radiologger /opt/radiologger/venv/bin/python -c "
+from app import db, app
+with app.app_context():
+    db.create_all()
+print('✅ Database tabellen aangemaakt')
+"
+    # Vul de database met basisgegevens
     sudo -u radiologger /opt/radiologger/venv/bin/python seed_data.py $use_default_flag
+else
+    echo "Geen setup_db.py of seed_data.py gevonden. Initialiseer database basis tabellen..."
+    # Creëer alleen de tabellen
+    sudo -u radiologger /opt/radiologger/venv/bin/python -c "
+from app import db, app
+with app.app_context():
+    db.create_all()
+print('✅ Database tabellen aangemaakt')
+"
+    # Maak een admin gebruiker aan
+    sudo -u radiologger /opt/radiologger/venv/bin/python -c "
+from app import db, app
+from models import User
+from werkzeug.security import generate_password_hash
+with app.app_context():
+    if User.query.count() == 0:
+        admin = User(username='admin', role='admin', password_hash=generate_password_hash('radioadmin'))
+        editor = User(username='editor', role='editor', password_hash=generate_password_hash('radioeditor'))
+        listener = User(username='luisteraar', role='listener', password_hash=generate_password_hash('radioluisteraar'))
+        db.session.add(admin)
+        db.session.add(editor)
+        db.session.add(listener)
+        db.session.commit()
+        print('✅ Standaard gebruikers aangemaakt')
+"
 fi
 
 echo ""

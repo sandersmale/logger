@@ -3,274 +3,139 @@
 Dit script initialiseert de database met basisgegevens 
 voor de radiologger applicatie.
 """
-
-import os
 import sys
+import os
 import logging
+import json
 from datetime import datetime
 from werkzeug.security import generate_password_hash
 
-# Configureer logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
+# Configuratie voor logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Zorg ervoor dat we de app kunnen importeren
-current_dir = os.path.dirname(os.path.abspath(__file__))
-if current_dir not in sys.path:
-    sys.path.insert(0, current_dir)
+# Zorg ervoor dat we de applicatie kunnen importeren
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
-# Importeer de app en database modellen
-from app import app, db
+from app import db
 from models import User, Station, DennisStation
 
 def setup_database():
     """
     Initialiseer de database en voeg de basis gebruikers toe.
     """
-    with app.app_context():
-        # Database tabellen aanmaken
-        logger.info("Database tabellen worden aangemaakt...")
+    try:
+        # Maak de tabellen aan als ze niet bestaan
         db.create_all()
-        
-        # Default gebruikers toevoegen als ze niet bestaan
-        if User.query.filter_by(username='admin').first() is None:
-            admin = User(
-                username='admin',
-                role='admin'
-            )
+        logger.info("Database tabellen aangemaakt")
+
+        # Controleer of er al gebruikers bestaan, zo niet, maak standaard gebruikers
+        if User.query.count() == 0:
+            logger.info("Aanmaken standaard gebruikers")
+            
+            # Admin gebruiker
+            admin = User(username='admin', role='admin')
             admin.set_password('radioadmin')
             db.session.add(admin)
-            logger.info("Admin gebruiker toegevoegd")
-        
-        if User.query.filter_by(username='editor').first() is None:
-            editor = User(
-                username='editor',
-                role='editor'
-            )
+            
+            # Editor gebruiker
+            editor = User(username='editor', role='editor')
             editor.set_password('radioeditor')
             db.session.add(editor)
-            logger.info("Editor gebruiker toegevoegd")
-        
-        if User.query.filter_by(username='luisteraar').first() is None:
-            listener = User(
-                username='luisteraar',
-                role='listener'
-            )
+            
+            # Luisteraar gebruiker
+            listener = User(username='luisteraar', role='listener')
             listener.set_password('radioluisteraar')
             db.session.add(listener)
-            logger.info("Luisteraar gebruiker toegevoegd")
+            
+            db.session.commit()
+            logger.info("Standaard gebruikers aangemaakt")
+        else:
+            logger.info("Gebruikers bestaan al, geen nieuwe gebruikers aangemaakt")
         
-        # Standaard Dennis stations toevoegen
+        # Voeg standaard Dennis stations toe als ze nog niet bestaan
         add_default_dennis_stations()
         
-        # Wijzigingen opslaan
-        db.session.commit()
-        logger.info("Database setup succesvol voltooid!")
+        # Voeg standaard stations toe als ze nog niet bestaan
+        use_default_stations = "--use-default-stations" in sys.argv
+        if Station.query.count() == 0:
+            if use_default_stations and os.path.exists('default_stations.json'):
+                logger.info("Importeren standaard stations uit default_stations.json")
+                with open('default_stations.json', 'r') as f:
+                    stations_data = json.load(f)
+                
+                for idx, station_data in enumerate(stations_data):
+                    station = Station(
+                        name=station_data['name'],
+                        recording_url=station_data['recording_url'],
+                        always_on=station_data.get('always_on', False),
+                        display_order=idx
+                    )
+                    db.session.add(station)
+                
+                db.session.commit()
+                logger.info(f"{len(stations_data)} standaard stations geïmporteerd")
+            else:
+                # Voeg enkele voorbeeld stations toe
+                logger.info("Toevoegen van voorbeeld radiostations")
+                stations = [
+                    Station(name="NPO Radio 1", recording_url="https://icecast.omroep.nl/radio1-bb-mp3", display_order=1),
+                    Station(name="NPO Radio 2", recording_url="https://icecast.omroep.nl/radio2-bb-mp3", display_order=2),
+                    Station(name="NPO 3FM", recording_url="https://icecast.omroep.nl/3fm-bb-mp3", display_order=3),
+                    Station(name="NPO Radio 4", recording_url="https://icecast.omroep.nl/radio4-bb-mp3", display_order=4),
+                    Station(name="NPO Radio 5", recording_url="https://icecast.omroep.nl/radio5-bb-mp3", display_order=5),
+                    Station(name="Omroep LvC", recording_url="https://stream.omroeplvc.nl:8006/radio", display_order=6)
+                ]
+                for station in stations:
+                    db.session.add(station)
+                
+                db.session.commit()
+                logger.info("Voorbeeld stations toegevoegd")
+        else:
+            logger.info("Stations bestaan al, geen nieuwe stations toegevoegd")
+
+        logger.info("Database initialisatie voltooid")
+        return True
+    except Exception as e:
+        logger.error(f"Fout bij database initialisatie: {str(e)}")
+        return False
 
 def add_default_dennis_stations():
     """Voeg standaard Dennis stations toe als ze niet bestaan"""
-    dennis_stations = [
-        {
-            "folder": "radio1",
-            "name": "NPO Radio 1",
-            "url": "https://icecast.omroep.nl/radio1-bb-mp3",
-            "visible": True
-        },
-        {
-            "folder": "radio2",
-            "name": "NPO Radio 2",
-            "url": "https://icecast.omroep.nl/radio2-bb-mp3",
-            "visible": True
-        },
-        {
-            "folder": "3fm",
-            "name": "NPO 3FM",
-            "url": "https://icecast.omroep.nl/3fm-bb-mp3",
-            "visible": True
-        },
-        {
-            "folder": "klassiek",
-            "name": "NPO Klassiek",
-            "url": "https://icecast.omroep.nl/radio4-bb-mp3",
-            "visible": True
-        },
-        {
-            "folder": "radio5",
-            "name": "NPO Radio 5",
-            "url": "https://icecast.omroep.nl/radio5-bb-mp3",
-            "visible": True
-        },
-        {
-            "folder": "funx",
-            "name": "FunX",
-            "url": "https://icecast.omroep.nl/funx-bb-mp3",
-            "visible": True
-        },
-        {
-            "folder": "bnr",
-            "name": "BNR Nieuwsradio",
-            "url": "https://stream.bnr.nl/bnr_mp3_128_20",
-            "visible": True
-        },
-        {
-            "folder": "skyradio",
-            "name": "Sky Radio",
-            "url": "https://23043.live.streamtheworld.com/SKYRADIO.mp3",
-            "visible": True
-        },
-        {
-            "folder": "radio538",
-            "name": "Radio 538",
-            "url": "https://21253.live.streamtheworld.com/RADIO538.mp3",
-            "visible": True
-        },
-        {
-            "folder": "radio10",
-            "name": "Radio 10",
-            "url": "https://23693.live.streamtheworld.com/RADIO10.mp3",
-            "visible": True
-        },
-        {
-            "folder": "qmusic",
-            "name": "Qmusic",
-            "url": "https://stream.qmusic.nl/qmusic/mp3",
-            "visible": True
-        },
-        {
-            "folder": "100nl",
-            "name": "100% NL",
-            "url": "https://stream.100p.nl/100pctnl.mp3",
-            "visible": True
-        },
-        {
-            "folder": "veronica",
-            "name": "Radio Veronica",
-            "url": "https://20873.live.streamtheworld.com/VERONICA.mp3",
-            "visible": True
-        },
-        {
-            "folder": "sublime",
-            "name": "Sublime",
-            "url": "https://25303.live.streamtheworld.com/SUBLIME.mp3",
-            "visible": True
-        }
-    ]
-        {
-            "folder": "radio2",
-            "name": "NPO Radio 2",
-            "url": "https://icecast.omroep.nl/radio2-bb-mp3",
-            "visible": True
-        },
-        {
-            "folder": "radio3",
-            "name": "NPO 3FM",
-            "url": "https://icecast.omroep.nl/3fm-bb-mp3",
-            "visible": True
-        },
-        {
-            "folder": "radio4",
-            "name": "NPO Radio 4",
-            "url": "https://icecast.omroep.nl/radio4-bb-mp3",
-            "visible": True
-        },
-        {
-            "folder": "radio5",
-            "name": "NPO Radio 5",
-            "url": "https://icecast.omroep.nl/radio5-bb-mp3",
-            "visible": True
-        },
-        {
-            "folder": "funx",
-            "name": "FunX",
-            "url": "https://icecast.omroep.nl/funx-bb-mp3",
-            "visible": True
-        },
-        {
-            "folder": "bnr",
-            "name": "BNR Nieuwsradio",
-            "url": "https://stream.bnr.nl/bnr_mp3_128_03",
-            "visible": True
-        },
-        {
-            "folder": "skyradio",
-            "name": "Sky Radio",
-            "url": "https://19993.live.streamtheworld.com/SKYRADIO.mp3",
-            "visible": True
-        },
-        {
-            "folder": "radio538",
-            "name": "Radio 538",
-            "url": "https://21253.live.streamtheworld.com/RADIO538.mp3",
-            "visible": True
-        },
-        {
-            "folder": "radio10",
-            "name": "Radio 10",
-            "url": "https://20873.live.streamtheworld.com/RADIO10.mp3",
-            "visible": True
-        },
-        {
-            "folder": "qmusic",
-            "name": "Qmusic",
-            "url": "https://stream.qmusic.nl/qmusic/mp3",
-            "visible": True
-        },
-        {
-            "folder": "100nl",
-            "name": "100% NL",
-            "url": "https://stream.100p.nl/100pctnl.mp3",
-            "visible": True
-        },
-        {
-            "folder": "veronica",
-            "name": "Radio Veronica",
-            "url": "https://20873.live.streamtheworld.com/VERONICA.mp3",
-            "visible": True
-        },
-        {
-            "folder": "sublime",
-            "name": "Sublime FM",
-            "url": "https://stream.sublimefm.nl/mp3",
-            "visible": True
-        }
-    ]
-    
-    added = 0
-    updated = 0
-    
-    for station_data in dennis_stations:
-        folder = station_data["folder"]
-        name = station_data["name"]
-        url = station_data["url"]
-        visible = station_data["visible"]
-        
-        # Controleer of station bestaat
-        station = DennisStation.query.filter_by(folder=folder).first()
-        
-        if station:
-            # Update bestaand station
-            station.name = name
-            station.url = url
-            station.visible_in_logger = visible
-            station.last_updated = datetime.utcnow()
-            updated += 1
+    try:
+        if DennisStation.query.count() == 0:
+            logger.info("Toevoegen van standaard Dennis stations")
+            dennis_stations = [
+                {"folder": "1001", "name": "Radio 10", "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/RADIO10.mp3"},
+                {"folder": "538", "name": "Radio 538", "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/RADIO538.mp3"},
+                {"folder": "100nl", "name": "100% NL", "url": "https://stream.100p.nl/100pctnl.mp3"},
+                {"folder": "Qmusic", "name": "Qmusic", "url": "https://stream.qmusic.nl/qmusic/mp3"},
+                {"folder": "Sky", "name": "Sky Radio", "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/SKYRADIO.mp3"}
+            ]
+            
+            for station_data in dennis_stations:
+                station = DennisStation(
+                    folder=station_data["folder"],
+                    name=station_data["name"],
+                    url=station_data["url"],
+                    visible_in_logger=False
+                )
+                db.session.add(station)
+            
+            db.session.commit()
+            logger.info(f"{len(dennis_stations)} standaard Dennis stations toegevoegd")
         else:
-            # Nieuw station toevoegen
-            station = DennisStation(
-                folder=folder,
-                name=name,
-                url=url,
-                visible_in_logger=visible,
-                last_updated=datetime.utcnow()
-            )
-            db.session.add(station)
-            added += 1
-    
-    logger.info(f"Dennis stations: {added} toegevoegd, {updated} bijgewerkt")
+            logger.info("Dennis stations bestaan al")
+        return True
+    except Exception as e:
+        logger.error(f"Fout bij toevoegen Dennis stations: {str(e)}")
+        return False
 
 if __name__ == "__main__":
-    logger.info("Start database initialisatie...")
-    setup_database()
+    # Voer de setup uit
+    if setup_database():
+        print("✅ Database succesvol geïnitialiseerd")
+        sys.exit(0)
+    else:
+        print("❌ Database initialisatie mislukt")
+        sys.exit(1)
