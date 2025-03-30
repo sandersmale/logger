@@ -310,29 +310,241 @@ chmod 600 /opt/radiologger/.env
 
 echo ""
 echo "Stap 6: Database initialiseren en vullen met basisgegevens..."
-debug_log "Start database initialisatie" true
-run_cmd "cd /opt/radiologger" "directory wisselen" false
+cd /opt/radiologger || exit 1
 
 # Gebruik de eerder opgegeven keuze voor standaard stations
 use_default_flag=""
 if [[ "$use_default_stations" =~ ^[jJ]$ ]]; then
     use_default_flag="--use-default-stations"
-    debug_log "Standaard stations uit de oude database worden gebruikt." true
+    echo "Standaard stations uit de oude database worden gebruikt."
 else
-    debug_log "Voorbeeld stations worden gebruikt." true
+    echo "Voorbeeld stations worden gebruikt."
 fi
 
-# Verzamel diagnostische informatie over Python en de omgeving
-debug_log "Python versie-informatie:" true
-run_cmd "python3 --version" "Python versie controleren" true
-run_cmd "pip3 --version" "Pip versie controleren" true
-run_cmd "ls -la /opt/radiologger" "Inhoud van /opt/radiologger weergeven" true
-run_cmd "ls -la /opt/radiologger/venv/bin" "Python venv inhoud weergeven" true
-run_cmd "grep -A 5 'from app import' /opt/radiologger/setup_db.py 2>/dev/null || echo 'setup_db.py bevat geen app import of bestaat niet'" "setup_db.py import check" true
-run_cmd "grep -A 5 'from app import' /opt/radiologger/init_db.py 2>/dev/null || echo 'init_db.py bevat geen app import of bestaat niet'" "init_db.py import check" true
-run_cmd "find /opt/radiologger -name 'app.py' | xargs cat 2>/dev/null || echo 'app.py niet gevonden'" "app.py inhoud" true
+# Maak een direct SQL-script voor database-initialisatie (failsafe methode)
+cat > /opt/radiologger/direct_db_setup.py << 'EOL'
+#!/usr/bin/env python3
+"""
+Radiologger directe database-initialisatie
+Dit script maakt tabellen direct aan via SQL zonder ORM
+"""
+import os
+import sys
+import psycopg2
+import traceback
+from datetime import datetime
+
+# Log bestand
+LOG_FILE = "/tmp/radiologger_db_setup.log"
+INSTALL_DIR = "/opt/radiologger"
+
+def log(message):
+    """Log een bericht naar het logbestand en toon het op het scherm"""
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    log_message = f"{timestamp} - {message}"
+    
+    with open(LOG_FILE, "a") as f:
+        f.write(log_message + "\n")
+    
+    print(message)
+
+def get_db_url():
+    """Haal de database URL op uit het .env bestand"""
+    env_path = os.path.join(INSTALL_DIR, ".env")
+    db_url = None
+    
+    if os.path.exists(env_path):
+        log(f"✅ .env bestand gevonden op: {env_path}")
+        with open(env_path, "r") as f:
+            for line in f:
+                if line.startswith("DATABASE_URL="):
+                    db_url = line.split("=", 1)[1].strip().strip('"\'')
+                    log(f"✅ DATABASE_URL gevonden: {db_url}")
+                    break
+    
+    if not db_url:
+        log("❌ Geen DATABASE_URL gevonden in .env")
+    
+    return db_url
+
+def simple_hash(password):
+    """Eenvoudige hash functie voor wachtwoorden, NIET voor productie!"""
+    import hashlib
+    # SHA-256 hash met een zout
+    salt = "radiologger_salt"
+    return "pbkdf2:sha256:150000$" + hashlib.sha256(f"{password}{salt}".encode()).hexdigest()
+
+def setup_database():
+    """Maak de database tabellen direct aan met SQL-commando's"""
+    db_url = get_db_url()
+    if not db_url:
+        return False
+    
+    try:
+        # Verbind met de PostgreSQL database
+        conn = psycopg2.connect(db_url)
+        conn.autocommit = True
+        cursor = conn.cursor()
+        
+        log("✅ Verbinding met database gemaakt")
+        
+        # Maak de user tabel aan
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS "user" (
+                id SERIAL PRIMARY KEY,
+                username VARCHAR(64) UNIQUE NOT NULL,
+                password_hash VARCHAR(256) NOT NULL,
+                role VARCHAR(20) DEFAULT 'listener' NOT NULL,
+                created_at TIMESTAMP DEFAULT NOW()
+            )
+        """)
+        
+        # Maak de station tabel aan
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS "station" (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(100) UNIQUE NOT NULL,
+                recording_url VARCHAR(255) NOT NULL,
+                always_on BOOLEAN DEFAULT FALSE,
+                display_order INTEGER DEFAULT 999,
+                schedule_start_date DATE,
+                schedule_start_hour INTEGER,
+                schedule_end_date DATE,
+                schedule_end_hour INTEGER,
+                record_reason VARCHAR(255),
+                created_at TIMESTAMP DEFAULT NOW(),
+                updated_at TIMESTAMP DEFAULT NOW()
+            )
+        """)
+        
+        # Maak de dennis_station tabel aan
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS "dennis_station" (
+                id SERIAL PRIMARY KEY,
+                folder VARCHAR(100) NOT NULL,
+                name VARCHAR(100) NOT NULL,
+                url VARCHAR(255) NOT NULL,
+                visible_in_logger BOOLEAN DEFAULT FALSE,
+                last_updated TIMESTAMP DEFAULT NOW()
+            )
+        """)
+        
+        # Maak de recording tabel aan
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS "recording" (
+                id SERIAL PRIMARY KEY,
+                station_id INTEGER REFERENCES "station"(id) NOT NULL,
+                date DATE NOT NULL,
+                hour VARCHAR(2) NOT NULL,
+                filepath VARCHAR(255) NOT NULL,
+                program_title VARCHAR(255),
+                recording_type VARCHAR(20) DEFAULT 'scheduled',
+                s3_uploaded BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT NOW()
+            )
+        """)
+        
+        # Maak de scheduled_job tabel aan
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS "scheduled_job" (
+                id SERIAL PRIMARY KEY,
+                job_id VARCHAR(100) NOT NULL,
+                station_id INTEGER REFERENCES "station"(id) NOT NULL,
+                job_type VARCHAR(20) NOT NULL,
+                start_time TIMESTAMP NOT NULL,
+                end_time TIMESTAMP,
+                status VARCHAR(20) DEFAULT 'scheduled',
+                created_at TIMESTAMP DEFAULT NOW()
+            )
+        """)
+        
+        log("✅ Database tabellen succesvol aangemaakt")
+        
+        # Controleer of er al gebruikers zijn
+        cursor.execute("SELECT COUNT(*) FROM \"user\"")
+        user_count = cursor.fetchone()[0]
+        
+        if user_count == 0:
+            log("🔄 Geen gebruikers gevonden, standaard gebruikers aanmaken...")
+            
+            # Maak de standaard gebruikers aan
+            cursor.execute("""
+                INSERT INTO "user" (username, password_hash, role)
+                VALUES (%s, %s, %s)
+            """, ("admin", simple_hash("radioadmin"), "admin"))
+            
+            cursor.execute("""
+                INSERT INTO "user" (username, password_hash, role)
+                VALUES (%s, %s, %s)
+            """, ("editor", simple_hash("radioeditor"), "editor"))
+            
+            cursor.execute("""
+                INSERT INTO "user" (username, password_hash, role)
+                VALUES (%s, %s, %s)
+            """, ("luisteraar", simple_hash("radioluisteraar"), "listener"))
+            
+            log("✅ Standaard gebruikers aangemaakt")
+        else:
+            log(f"ℹ️ Er zijn al {user_count} gebruikers in de database, geen nieuwe gebruikers aangemaakt")
+        
+        conn.close()
+        return True
+        
+    except Exception as e:
+        log(f"❌ Fout bij database-initialisatie: {e}")
+        log(traceback.format_exc())
+        return False
+
+if __name__ == "__main__":
+    # Maak logbestand aan
+    with open(LOG_FILE, "w") as f:
+        f.write(f"Radiologger database setup log - {datetime.now()}\n")
+        f.write("-" * 80 + "\n")
+    
+    log(f"Radiologger directe database-initialisatie gestart")
+    log(f"Python versie: {sys.version}")
+    log(f"Werkdirectory: {os.getcwd()}")
+    
+    success = setup_database()
+    
+    if success:
+        log("✅ Database setup succesvol voltooid!")
+        sys.exit(0)
+    else:
+        log("❌ Database setup MISLUKT!")
+        sys.exit(1)
+EOL
+
+# Maak het script uitvoerbaar
+chmod +x /opt/radiologger/direct_db_setup.py
+chown radiologger:radiologger /opt/radiologger/direct_db_setup.py
+
+# Voer het direct SQL-script uit als failsafe
+echo "Direct SQL database setup starten..."
+sudo -u radiologger /opt/radiologger/venv/bin/python /opt/radiologger/direct_db_setup.py
+
+# Als het directe script succesvol was, sla de rest over
+direct_setup_result=$?
+if [ $direct_setup_result -eq 0 ]; then
+    echo "✅ Direct SQL database setup succesvol voltooid!"
+    echo "Logbestand beschikbaar op: /tmp/radiologger_db_setup.log"
+    
+    # Als er standaard stations geïmporteerd moeten worden
+    if [[ "$use_default_stations" =~ ^[jJ]$ ]] && [ -f "seed_data.py" ]; then
+        echo "Importeren van standaard stations..."
+        cd /opt/radiologger
+        sudo -u radiologger /opt/radiologger/venv/bin/python seed_data.py --use-default-stations
+    fi
+
+    # Spring naar de volgende stap in het script (Systemd service)
+    echo ""
+    echo "Stap 7: Systemd service instellen..."
+else
+    echo "⚠️ Direct SQL database setup niet succesvol, probeer alternatieve methoden..."
 
 # Controleer of setup_db.py bestaat, anders gebruik seed_data.py
+fi
+
 if [ -f "setup_db.py" ]; then
     debug_log "setup_db.py gevonden, database initialiseren..." true
     chmod +x setup_db.py
