@@ -90,8 +90,8 @@ def seed_initial_data(use_default_stations=False):
                     'display_order': 50
                 },
                 {
-                    'name': 'NPO Soul & Jazz',
-                    'recording_url': 'https://icecast.omroep.nl/radio6-bb-mp3',
+                    'name': 'omroep land van cuijk',
+                    'recording_url': 'https://stream.omroeplvc.nl:8443/stream',
                     'always_on': False,
                     'display_order': 60
                 }
@@ -116,50 +116,10 @@ def seed_initial_data(use_default_stations=False):
             
             db.session.add(station)
         
-        # Create some Dennis stations
-        dennis_stations = [
-            {
-                'folder': 'nporadio1',
-                'name': 'NPO Radio 1',
-                'url': 'https://icecast.omroep.nl/radio1-bb-mp3',
-                'visible_in_logger': True
-            },
-            {
-                'folder': 'nporadio2',
-                'name': 'NPO Radio 2',
-                'url': 'https://icecast.omroep.nl/radio2-bb-mp3',
-                'visible_in_logger': True
-            },
-            {
-                'folder': 'npo3fm',
-                'name': 'NPO 3FM',
-                'url': 'https://icecast.omroep.nl/3fm-bb-mp3',
-                'visible_in_logger': False
-            },
-            {
-                'folder': 'nporadio4',
-                'name': 'NPO Radio 4',
-                'url': 'https://icecast.omroep.nl/radio4-bb-mp3',
-                'visible_in_logger': False
-            },
-            {
-                'folder': 'nporadio5',
-                'name': 'NPO Radio 5',
-                'url': 'https://icecast.omroep.nl/radio5-bb-mp3',
-                'visible_in_logger': True
-            }
-        ]
-        
-        for station_data in dennis_stations:
-            station = DennisStation(
-                folder=station_data['folder'],
-                name=station_data['name'],
-                url=station_data['url'],
-                visible_in_logger=station_data['visible_in_logger'],
-                last_updated=datetime.now()
-            )
-            
-            db.session.add(station)
+        # Dennis stations worden niet vooraf gevuld
+        # Deze worden alleen bijgewerkt wanneer de gebruiker expliciet 
+        # de API vernieuwt via de refresh functie
+        print("Dennis stations worden niet voorgevuld, deze worden opgehaald via de API refresh actie")
         
         db.session.commit()
         print("Initial data seeded successfully!")
