@@ -277,12 +277,20 @@ if [ -f "setup_db.py" ]; then
     setup_result=$?
     if [ $setup_result -ne 0 ]; then
         echo "WAARSCHUWING: setup_db.py gaf een fout, probeer handmatige initialisatie..."
-        # Initialiseer tabel structuur direct met db.create_all()
+        # Initialiseer tabel structuur direct met db.create_all() en verbeterde import robustheid
         sudo -u radiologger /opt/radiologger/venv/bin/python -c "
-from app import db, app
-with app.app_context():
-    db.create_all()
-print('✅ Database tabellen aangemaakt')
+import sys
+import os
+# Zorg dat de huidige map in het Python pad zit
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+try:
+    from app import db, app
+    with app.app_context():
+        db.create_all()
+    print('✅ Database tabellen aangemaakt')
+except Exception as e:
+    print(f'❌ Fout bij aanmaken tabellen: {e}')
+    sys.exit(1)
 "
         if [ -f "seed_data.py" ]; then
             echo "Initialiseren van basisgegevens via seed_data.py..."
@@ -291,39 +299,63 @@ print('✅ Database tabellen aangemaakt')
     fi
 elif [ -f "seed_data.py" ]; then
     echo "setup_db.py niet gevonden, maar seed_data.py wel. Database initialiseren..."
-    # Initialiseer tabel structuur direct met db.create_all()
+    # Initialiseer tabel structuur direct met db.create_all() en verbeterde import robustheid
     sudo -u radiologger /opt/radiologger/venv/bin/python -c "
-from app import db, app
-with app.app_context():
-    db.create_all()
-print('✅ Database tabellen aangemaakt')
+import sys
+import os
+# Zorg dat de huidige map in het Python pad zit
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+try:
+    from app import db, app
+    with app.app_context():
+        db.create_all()
+    print('✅ Database tabellen aangemaakt')
+except Exception as e:
+    print(f'❌ Fout bij aanmaken tabellen: {e}')
+    sys.exit(1)
 "
     # Vul de database met basisgegevens
     sudo -u radiologger /opt/radiologger/venv/bin/python seed_data.py $use_default_flag
 else
     echo "Geen setup_db.py of seed_data.py gevonden. Initialiseer database basis tabellen..."
-    # Creëer alleen de tabellen
+    # Creëer alleen de tabellen met verbeterde import robustheid
     sudo -u radiologger /opt/radiologger/venv/bin/python -c "
-from app import db, app
-with app.app_context():
-    db.create_all()
-print('✅ Database tabellen aangemaakt')
+import sys
+import os
+# Zorg dat de huidige map in het Python pad zit
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+try:
+    from app import db, app
+    with app.app_context():
+        db.create_all()
+    print('✅ Database tabellen aangemaakt')
+except Exception as e:
+    print(f'❌ Fout bij aanmaken tabellen: {e}')
+    sys.exit(1)
 "
-    # Maak een admin gebruiker aan
+    # Maak een admin gebruiker aan met verbeterde import robustheid
     sudo -u radiologger /opt/radiologger/venv/bin/python -c "
-from app import db, app
-from models import User
-from werkzeug.security import generate_password_hash
-with app.app_context():
-    if User.query.count() == 0:
-        admin = User(username='admin', role='admin', password_hash=generate_password_hash('radioadmin'))
-        editor = User(username='editor', role='editor', password_hash=generate_password_hash('radioeditor'))
-        listener = User(username='luisteraar', role='listener', password_hash=generate_password_hash('radioluisteraar'))
-        db.session.add(admin)
-        db.session.add(editor)
-        db.session.add(listener)
-        db.session.commit()
-        print('✅ Standaard gebruikers aangemaakt')
+import sys
+import os
+# Zorg dat de huidige map in het Python pad zit
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+try:
+    from app import db, app
+    from models import User
+    from werkzeug.security import generate_password_hash
+    with app.app_context():
+        if User.query.count() == 0:
+            admin = User(username='admin', role='admin', password_hash=generate_password_hash('radioadmin'))
+            editor = User(username='editor', role='editor', password_hash=generate_password_hash('radioeditor'))
+            listener = User(username='luisteraar', role='listener', password_hash=generate_password_hash('radioluisteraar'))
+            db.session.add(admin)
+            db.session.add(editor)
+            db.session.add(listener)
+            db.session.commit()
+            print('✅ Standaard gebruikers aangemaakt')
+except Exception as e:
+    print(f'❌ Fout bij aanmaken gebruikers: {e}')
+    sys.exit(1)
 "
 fi
 
@@ -425,7 +457,7 @@ echo "Stap 10: Cron-taken instellen voor onderhoud..."
 # 8 minuten na het uur (net als in de scheduler)
 echo "Omroep LvC download taak instellen (8 minuten na het uur)..."
 (sudo -u radiologger crontab -l 2>/dev/null) | \
-    { cat; echo "8 * * * * cd /opt/radiologger && /opt/radiologger/venv/bin/python -c 'from logger import download_omroeplvc; download_omroeplvc()' >> /var/log/radiologger/omroeplvc_cron.log 2>&1"; } | \
+    { cat; echo "8 * * * * cd /opt/radiologger && /opt/radiologger/venv/bin/python -c 'import sys, os; sys.path.insert(0, os.path.abspath(os.path.dirname(\"__file__\"))); from logger import download_omroeplvc; download_omroeplvc()' >> /var/log/radiologger/omroeplvc_cron.log 2>&1"; } | \
     sudo -u radiologger crontab -
 
 echo ""
