@@ -33,10 +33,10 @@ wget -O install.sh https://raw.githubusercontent.com/sandersmale/logger/main/ins
 chmod +x install.sh && sudo ./install.sh
 ```
 
-### Optie B: Turbo installatie (1 commando, alles-in-één)
+### Optie B: Turbo installatie (1 commando, alles-in-één, veiligere versie)
 
 ```bash
-sudo bash -c "mkdir -p /tmp/radiologger && cd /tmp/radiologger && wget -O install.sh https://raw.githubusercontent.com/sandersmale/logger/main/install.sh && chmod +x install.sh && bash install.sh"
+sudo bash -c "mkdir -p /tmp/radiologger && chmod 700 /tmp/radiologger && cd /tmp/radiologger && wget -O install.sh https://raw.githubusercontent.com/sandersmale/logger/main/install.sh && chmod +x install.sh && bash install.sh"
 ```
 
 ⚡ Dat is alles! Het script neemt het vanaf hier over.
@@ -119,7 +119,9 @@ sudo chmod +x install.sh
 ### Als het script faalt:
 1. Controleer of je internetverbinding werkt
 2. Controleer of je voldoende schijfruimte hebt: `df -h`
-3. Bekijk de logbestanden: `tail -f /var/log/radiologger/error.log`
+3. Bekijk de installatie logbestanden: `cat /tmp/radiologger_install_debug.log`
+4. Bekijk de database setup logs: `cat /tmp/radiologger_db_setup.log`
+5. Bekijk de applicatie logbestanden: `tail -f /var/log/radiologger/error.log`
 
 Voor meer gedetailleerde instructies, zie [INSTALL.md](INSTALL.md)
 

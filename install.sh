@@ -1,6 +1,9 @@
 #!/bin/bash
 # Radiologger installatiescript voor Ubuntu 24.04
 # Dit script installeert en configureert de Radiologger applicatie
+#
+# Aanbevolen commando voor directe installatie:
+# sudo bash -c "mkdir -p /tmp/radiologger && chmod 700 /tmp/radiologger && cd /tmp/radiologger && wget -O install.sh https://raw.githubusercontent.com/sandersmale/logger/main/install.sh && chmod +x install.sh && bash install.sh"
 
 # Maak een debug logbestand aan
 DEBUG_LOG="/tmp/radiologger_install_debug.log"
@@ -650,12 +653,25 @@ EOL
 else
     echo "Geen setup_db.py of seed_data.py gevonden. Initialiseer database basis tabellen..."
     
-    # Maak een tijdelijk Python-script voor database-initialisatie
+    # Maak een volledig standalone Python-script voor database-initialisatie
     cat > /opt/radiologger/init_db.py << 'EOL'
 #!/usr/bin/env python3
+"""
+Radiologger database-initialisatie zonder afhankelijkheden.
+Dit script bouwt de app vanaf de grond op zonder gebruik te maken van imports van bestaande modules.
+"""
 import os
 import sys
+import imp
+import importlib.util
+import logging
 from pathlib import Path
+import traceback
+
+# Configureer logging
+logging.basicConfig(level=logging.INFO, 
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger('db_setup')
 
 # Zorg ervoor dat we in de juiste directory zijn
 os.chdir('/opt/radiologger')
@@ -665,14 +681,246 @@ sys.path.insert(0, str(base_path))
 # Voeg de directory toe aan PYTHONPATH
 os.environ['PYTHONPATH'] = str(base_path)
 
+# Debug informatie
+logger.info(f"Python versie: {sys.version}")
+logger.info(f"Werkdirectory: {os.getcwd()}")
+logger.info(f"Python zoekpad: {sys.path}")
+logger.info(f"PYTHONPATH: {os.environ.get('PYTHONPATH', 'Niet gezet')}")
+logger.info("Modules in huidige directory:")
+for path in os.listdir('.'):
+    if path.endswith('.py'):
+        logger.info(f"- {path}")
+
+# Lees database configuratie uit .env
+def get_db_url():
+    """Haal database URL uit .env bestand"""
+    if not os.path.exists('.env'):
+        logger.error(".env bestand niet gevonden")
+        return None
+    
+    with open('.env', 'r') as f:
+        for line in f:
+            if line.startswith('DATABASE_URL='):
+                db_url = line.split('=', 1)[1].strip().strip('"\'')
+                logger.info(f"Database URL gevonden: {db_url}")
+                return db_url
+    
+    logger.error("DATABASE_URL niet gevonden in .env")
+    return None
+
+# Directe database aanmaak zonder ORM
+def create_database_schema():
+    """Maak direct database tabellen aan via SQL zonder SQLAlchemy"""
+    import psycopg2
+    
+    db_url = get_db_url()
+    if not db_url:
+        return False
+    
+    try:
+        # Verbind met de PostgreSQL database
+        conn = psycopg2.connect(db_url)
+        conn.autocommit = True
+        cursor = conn.cursor()
+        
+        logger.info("✅ Verbinding met database gemaakt")
+        
+        # Maak de user tabel aan
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS "user" (
+                id SERIAL PRIMARY KEY,
+                username VARCHAR(64) UNIQUE NOT NULL,
+                password_hash VARCHAR(256) NOT NULL,
+                role VARCHAR(20) DEFAULT 'listener' NOT NULL,
+                created_at TIMESTAMP DEFAULT NOW()
+            )
+        """)
+        
+        # Maak de station tabel aan
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS "station" (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(100) UNIQUE NOT NULL,
+                recording_url VARCHAR(255) NOT NULL,
+                always_on BOOLEAN DEFAULT FALSE,
+                display_order INTEGER DEFAULT 999,
+                schedule_start_date DATE,
+                schedule_start_hour INTEGER,
+                schedule_end_date DATE,
+                schedule_end_hour INTEGER,
+                record_reason VARCHAR(255),
+                created_at TIMESTAMP DEFAULT NOW(),
+                updated_at TIMESTAMP DEFAULT NOW()
+            )
+        """)
+        
+        # Maak de dennis_station tabel aan
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS "dennis_station" (
+                id SERIAL PRIMARY KEY,
+                folder VARCHAR(100) NOT NULL,
+                name VARCHAR(100) NOT NULL,
+                url VARCHAR(255) NOT NULL,
+                visible_in_logger BOOLEAN DEFAULT FALSE,
+                last_updated TIMESTAMP DEFAULT NOW()
+            )
+        """)
+        
+        # Maak de recording tabel aan
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS "recording" (
+                id SERIAL PRIMARY KEY,
+                station_id INTEGER REFERENCES "station"(id) NOT NULL,
+                date DATE NOT NULL,
+                hour VARCHAR(2) NOT NULL,
+                filepath VARCHAR(255) NOT NULL,
+                program_title VARCHAR(255),
+                recording_type VARCHAR(20) DEFAULT 'scheduled',
+                s3_uploaded BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT NOW()
+            )
+        """)
+        
+        # Maak de scheduled_job tabel aan
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS "scheduled_job" (
+                id SERIAL PRIMARY KEY,
+                job_id VARCHAR(100) NOT NULL,
+                station_id INTEGER REFERENCES "station"(id) NOT NULL,
+                job_type VARCHAR(20) NOT NULL,
+                start_time TIMESTAMP NOT NULL,
+                end_time TIMESTAMP,
+                status VARCHAR(20) DEFAULT 'scheduled',
+                created_at TIMESTAMP DEFAULT NOW()
+            )
+        """)
+        
+        logger.info("✅ Database tabellen succesvol aangemaakt")
+        
+        # Simple hash voor initiële gebruikers
+        def simple_hash(password):
+            """Eenvoudige hash functie voor wachtwoorden, NIET voor productie!"""
+            import hashlib
+            # SHA-256 hash met een zout
+            salt = "radiologger_salt"
+            return "pbkdf2:sha256:150000$" + hashlib.sha256(f"{password}{salt}".encode()).hexdigest()
+        
+        # Controleer of er al gebruikers zijn
+        cursor.execute("SELECT COUNT(*) FROM \"user\"")
+        user_count = cursor.fetchone()[0]
+        
+        if user_count == 0:
+            logger.info("🔄 Geen gebruikers gevonden, standaard gebruikers aanmaken...")
+            
+            # Maak de standaard gebruikers aan
+            cursor.execute("""
+                INSERT INTO "user" (username, password_hash, role)
+                VALUES (%s, %s, %s)
+            """, ("admin", simple_hash("radioadmin"), "admin"))
+            
+            cursor.execute("""
+                INSERT INTO "user" (username, password_hash, role)
+                VALUES (%s, %s, %s)
+            """, ("editor", simple_hash("radioeditor"), "editor"))
+            
+            cursor.execute("""
+                INSERT INTO "user" (username, password_hash, role)
+                VALUES (%s, %s, %s)
+            """, ("luisteraar", simple_hash("radioluisteraar"), "listener"))
+            
+            logger.info("✅ Standaard gebruikers aangemaakt")
+        else:
+            logger.info(f"ℹ️ Er zijn al {user_count} gebruikers in de database, geen nieuwe gebruikers aangemaakt")
+        
+        conn.close()
+        return True
+    
+    except Exception as e:
+        logger.error(f"Fout bij database-initialisatie: {e}")
+        logger.error(traceback.format_exc())
+        return False
+
+# Probeer eerst de directe methode
 try:
-    from app import db, app
+    logger.info("Poging 1: Directe database initialisatie met psycopg2...")
+    if create_database_schema():
+        logger.info("✅ Database initialisatie succesvol met directe methode")
+        sys.exit(0)
+    else:
+        logger.warning("Directe initialisatie gefaald, probeer alternatieve methode...")
+except Exception as e:
+    logger.error(f"Fout bij directe initialisatie: {str(e)}")
+    logger.error(traceback.format_exc())
+
+# Als alternatief, probeer via de flask app
+try:
+    logger.info("Poging 2: Database initialisatie via Flask SQLAlchemy...")
+    
+    # Importeer modules dynamisch
+    spec = importlib.util.spec_from_file_location("app", "./app.py")
+    app_module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(app_module)
+    
+    # Haal de benodigde objecten op
+    db = getattr(app_module, 'db')
+    app = getattr(app_module, 'app')
+    
     with app.app_context():
         db.create_all()
-    print('✅ Database tabellen aangemaakt')
+    
+    logger.info("✅ Database tabellen aangemaakt via SQLAlchemy")
     sys.exit(0)
 except Exception as e:
-    print(f'❌ Fout bij aanmaken tabellen: {e}')
+    logger.error(f"Fout bij SQLAlchemy initialisatie: {str(e)}")
+    logger.error(traceback.format_exc())
+    
+# Laatste redmiddel - probeer de app handmatig te creëren
+try:
+    logger.info("Poging 3: Handmatige Flask SQLAlchemy setup...")
+    
+    from flask import Flask
+    from flask_sqlalchemy import SQLAlchemy
+    from sqlalchemy.orm import DeclarativeBase
+    
+    # Definieer de basisklasse voor SQLAlchemy modellen
+    class Base(DeclarativeBase):
+        pass
+    
+    # Maak de Flask app en SQLAlchemy instantie
+    db = SQLAlchemy(model_class=Base)
+    app = Flask(__name__)
+    
+    # Configureer de database
+    app.config['SQLALCHEMY_DATABASE_URI'] = get_db_url()
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    
+    # Initialiseer de app met SQLAlchemy
+    db.init_app(app)
+    
+    # Maak alle tabellen
+    with app.app_context():
+        # Dynamisch importeren van modellen
+        model_files = [f for f in os.listdir('.') if f.endswith('.py') and 'model' in f.lower()]
+        for model_file in model_files:
+            logger.info(f"Probeer modellen te laden uit: {model_file}")
+            try:
+                module_name = model_file[:-3]  # Verwijder .py
+                spec = importlib.util.spec_from_file_location(module_name, f"./{model_file}")
+                if spec and spec.loader:
+                    module = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(module)
+                    logger.info(f"Model {module_name} geladen")
+            except Exception as e:
+                logger.warning(f"Kan model {model_file} niet laden: {str(e)}")
+        
+        # Maak tabellen
+        db.create_all()
+        logger.info("✅ Database tabellen aangemaakt via handmatige setup")
+    
+    sys.exit(0)
+except Exception as e:
+    logger.error(f"❌ Alle pogingen gefaald! Laatste fout: {str(e)}")
+    logger.error(traceback.format_exc())
     sys.exit(1)
 EOL
 
