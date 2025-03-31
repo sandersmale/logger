@@ -67,58 +67,67 @@
                                 </div>
                             </div>
 
-                            <div class="mb-4">
-                                <h4>Wasabi S3 Cloud Storage</h4>
-                                <p>Configureer Wasabi cloud storage voor het opslaan van de opnames.</p>
+                            {% if not wasabi_configured %}
+                                <div class="mb-4">
+                                    <h4>Wasabi S3 Cloud Storage</h4>
+                                    <p>Configureer Wasabi cloud storage voor het opslaan van de opnames.</p>
 
-                                <div class="mb-3">
-                                    {{ form.wasabi_access_key.label(class="form-label") }}
-                                    {{ form.wasabi_access_key(class="form-control", placeholder="Wasabi Access Key") }}
-                                    {% if form.wasabi_access_key.errors %}
-                                        <div class="text-danger">
-                                            {% for error in form.wasabi_access_key.errors %}
-                                                {{ error }}
-                                            {% endfor %}
-                                        </div>
-                                    {% endif %}
-                                </div>
+                                    <div class="mb-3">
+                                        {{ form.wasabi_access_key.label(class="form-label") }}
+                                        {{ form.wasabi_access_key(class="form-control", placeholder="Wasabi Access Key") }}
+                                        {% if form.wasabi_access_key.errors %}
+                                            <div class="text-danger">
+                                                {% for error in form.wasabi_access_key.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
 
-                                <div class="mb-3">
-                                    {{ form.wasabi_secret_key.label(class="form-label") }}
-                                    {{ form.wasabi_secret_key(class="form-control", placeholder="Wasabi Secret Key") }}
-                                    {% if form.wasabi_secret_key.errors %}
-                                        <div class="text-danger">
-                                            {% for error in form.wasabi_secret_key.errors %}
-                                                {{ error }}
-                                            {% endfor %}
-                                        </div>
-                                    {% endif %}
-                                </div>
+                                    <div class="mb-3">
+                                        {{ form.wasabi_secret_key.label(class="form-label") }}
+                                        {{ form.wasabi_secret_key(class="form-control", placeholder="Wasabi Secret Key") }}
+                                        {% if form.wasabi_secret_key.errors %}
+                                            <div class="text-danger">
+                                                {% for error in form.wasabi_secret_key.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
 
-                                <div class="mb-3">
-                                    {{ form.wasabi_bucket.label(class="form-label") }}
-                                    {{ form.wasabi_bucket(class="form-control", placeholder="Wasabi Bucket Naam") }}
-                                    {% if form.wasabi_bucket.errors %}
-                                        <div class="text-danger">
-                                            {% for error in form.wasabi_bucket.errors %}
-                                                {{ error }}
-                                            {% endfor %}
-                                        </div>
-                                    {% endif %}
-                                </div>
+                                    <div class="mb-3">
+                                        {{ form.wasabi_bucket.label(class="form-label") }}
+                                        {{ form.wasabi_bucket(class="form-control", placeholder="Wasabi Bucket Naam") }}
+                                        {% if form.wasabi_bucket.errors %}
+                                            <div class="text-danger">
+                                                {% for error in form.wasabi_bucket.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
 
-                                <div class="mb-3">
-                                    {{ form.wasabi_region.label(class="form-label") }}
-                                    {{ form.wasabi_region(class="form-control", placeholder="Wasabi Regio (bijv. eu-central-1)") }}
-                                    {% if form.wasabi_region.errors %}
-                                        <div class="text-danger">
-                                            {% for error in form.wasabi_region.errors %}
-                                                {{ error }}
-                                            {% endfor %}
-                                        </div>
-                                    {% endif %}
+                                    <div class="mb-3">
+                                        {{ form.wasabi_region.label(class="form-label") }}
+                                        {{ form.wasabi_region(class="form-control", placeholder="Wasabi Regio (bijv. eu-central-1)") }}
+                                        {% if form.wasabi_region.errors %}
+                                            <div class="text-danger">
+                                                {% for error in form.wasabi_region.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
                                 </div>
-                            </div>
+                            {% else %}
+                                <div class="mb-4">
+                                    <div class="alert alert-info">
+                                        <h4>Wasabi S3 Cloud Storage</h4>
+                                        <p>Wasabi is al geconfigureerd tijdens de installatie. Je kunt deze configuratie later wijzigen via de admin interface.</p>
+                                    </div>
+                                </div>
+                            {% endif %}
 
                             <div class="d-grid gap-2">
                                 {{ form.submit(class="btn btn-primary btn-lg") }}

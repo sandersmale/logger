@@ -26,7 +26,8 @@ def index():
     # Controleer of er gebruikers zijn (setup is voltooid)
     user_count = User.query.count()
     if user_count == 0:
-        # Eerste keer setup nodig
+        # Eerste keer setup nodig - alleen voor admin account aanmaken
+        # Wasabi-configuratie zou al moeten gebeurd zijn tijdens installatie
         return redirect(url_for('setup'))
     
     # Normale flow als setup voltooid is
@@ -220,14 +221,19 @@ def not_found_error(error):
 
 @app.route('/setup', methods=['GET', 'POST'])
 def setup():
-    """Eerste keer setup-pagina voor het aanmaken van admin gebruiker en configureren van Wasabi"""
+    """Eerste keer setup-pagina voor het aanmaken van admin gebruiker (Wasabi-configuratie gebeurt tijdens installatie)"""
     # Controleer of er al gebruikers zijn
     user_count = User.query.count()
     if user_count > 0:
         flash('Setup is al voltooid. Er zijn al gebruikers aangemaakt.', 'info')
         return redirect(url_for('index'))
     
+    # Aangepaste versie van het formulier zonder Wasabi velden
     form = SetupForm()
+    
+    # Controleer of Wasabi-gegevens al ingesteld zijn
+    wasabi_configured = bool(app.config.get('WASABI_ACCESS_KEY') and app.config.get('WASABI_SECRET_KEY') and app.config.get('WASABI_BUCKET'))
+    
     if form.validate_on_submit():
         try:
             # Maak de admin gebruiker aan
@@ -238,81 +244,83 @@ def setup():
             admin_user.set_password(form.admin_password.data)
             db.session.add(admin_user)
             
-            # Update de .env file met de Wasabi configuratie
-            env_path = '.env'
-            prod_path = '/opt/radiologger/.env'  # Productie path
-            
-            # Bepaal welk .env bestand we moeten updaten
-            if os.path.exists(prod_path):
-                env_path = prod_path
+            # Alleen Wasabi gegevens updaten als ze met het formulier zijn ingediend
+            # EN als ze nog niet geconfigureerd waren tijdens installatie
+            if not wasabi_configured and hasattr(form, 'wasabi_access_key') and form.wasabi_access_key.data:
+                env_path = '.env'
+                prod_path = '/opt/radiologger/.env'  # Productie path
                 
-            if os.path.exists(env_path):
-                try:
-                    # Lees het bestand
-                    with open(env_path, 'r') as file:
-                        env_lines = file.readlines()
+                # Bepaal welk .env bestand we moeten updaten
+                if os.path.exists(prod_path):
+                    env_path = prod_path
                     
-                    # Bijwerken van Wasabi configuratie
-                    wasabi_lines = {
-                        'WASABI_ACCESS_KEY': form.wasabi_access_key.data,
-                        'WASABI_SECRET_KEY': form.wasabi_secret_key.data,
-                        'WASABI_BUCKET': form.wasabi_bucket.data,
-                        'WASABI_REGION': form.wasabi_region.data,
-                        'WASABI_ENDPOINT_URL': f'https://s3.{form.wasabi_region.data}.wasabisys.com'
-                    }
-                    
-                    # Update bestaande regels of voeg nieuwe toe
-                    updated_lines = []
-                    for line in env_lines:
-                        key = line.split('=')[0].strip() if '=' in line else None
-                        if key in wasabi_lines:
-                            updated_lines.append(f"{key}={wasabi_lines[key]}\n")
-                            wasabi_lines.pop(key)
-                        else:
-                            updated_lines.append(line)
-                    
-                    # Voeg eventuele ontbrekende Wasabi-configuratie toe
-                    for key, value in wasabi_lines.items():
-                        updated_lines.append(f"{key}={value}\n")
-                    
-                    # Schrijf terug naar .env bestand
-                    with open(env_path, 'w') as file:
-                        file.writelines(updated_lines)
-                    
-                    # Zorg ervoor dat de bestandsrechten correct zijn in productiemodus
-                    if env_path == prod_path:
-                        os.system(f"chown radiologger:radiologger {env_path}")
-                        os.system(f"chmod 640 {env_path}")
-                except Exception as e:
-                    logger.error(f"Fout bij updaten van .env bestand: {e}")
-                    flash(f"Waarschuwing: De Wasabi configuratie kon niet worden opgeslagen in het .env bestand: {e}", "warning")
-                
-                # Update app config met nieuwe waarden
-                app.config['WASABI_ACCESS_KEY'] = form.wasabi_access_key.data
-                app.config['WASABI_SECRET_KEY'] = form.wasabi_secret_key.data
-                app.config['WASABI_BUCKET'] = form.wasabi_bucket.data
-                app.config['WASABI_REGION'] = form.wasabi_region.data
-                app.config['WASABI_ENDPOINT_URL'] = f'https://s3.{form.wasabi_region.data}.wasabisys.com'
-                
-                # S3 aliassen ook bijwerken
-                app.config['S3_ACCESS_KEY'] = form.wasabi_access_key.data
-                app.config['S3_SECRET_KEY'] = form.wasabi_secret_key.data
-                app.config['S3_BUCKET'] = form.wasabi_bucket.data
-                app.config['S3_REGION'] = form.wasabi_region.data
-                app.config['S3_ENDPOINT'] = f'https://s3.{form.wasabi_region.data}.wasabisys.com'
+                if os.path.exists(env_path):
+                    try:
+                        # Lees het bestand
+                        with open(env_path, 'r') as file:
+                            env_lines = file.readlines()
+                        
+                        # Bijwerken van Wasabi configuratie
+                        wasabi_lines = {
+                            'WASABI_ACCESS_KEY': form.wasabi_access_key.data,
+                            'WASABI_SECRET_KEY': form.wasabi_secret_key.data,
+                            'WASABI_BUCKET': form.wasabi_bucket.data,
+                            'WASABI_REGION': form.wasabi_region.data,
+                            'WASABI_ENDPOINT_URL': f'https://s3.{form.wasabi_region.data}.wasabisys.com'
+                        }
+                        
+                        # Update bestaande regels of voeg nieuwe toe
+                        updated_lines = []
+                        for line in env_lines:
+                            key = line.split('=')[0].strip() if '=' in line else None
+                            if key in wasabi_lines:
+                                updated_lines.append(f"{key}={wasabi_lines[key]}\n")
+                                wasabi_lines.pop(key)
+                            else:
+                                updated_lines.append(line)
+                        
+                        # Voeg eventuele ontbrekende Wasabi-configuratie toe
+                        for key, value in wasabi_lines.items():
+                            updated_lines.append(f"{key}={value}\n")
+                        
+                        # Schrijf terug naar .env bestand
+                        with open(env_path, 'w') as file:
+                            file.writelines(updated_lines)
+                        
+                        # Zorg ervoor dat de bestandsrechten correct zijn in productiemodus
+                        if env_path == prod_path:
+                            os.system(f"chown radiologger:radiologger {env_path}")
+                            os.system(f"chmod 640 {env_path}")
+                        
+                        # Update app config met nieuwe waarden
+                        app.config['WASABI_ACCESS_KEY'] = form.wasabi_access_key.data
+                        app.config['WASABI_SECRET_KEY'] = form.wasabi_secret_key.data
+                        app.config['WASABI_BUCKET'] = form.wasabi_bucket.data
+                        app.config['WASABI_REGION'] = form.wasabi_region.data
+                        app.config['WASABI_ENDPOINT_URL'] = f'https://s3.{form.wasabi_region.data}.wasabisys.com'
+                        
+                        # S3 aliassen ook bijwerken
+                        app.config['S3_ACCESS_KEY'] = form.wasabi_access_key.data
+                        app.config['S3_SECRET_KEY'] = form.wasabi_secret_key.data
+                        app.config['S3_BUCKET'] = form.wasabi_bucket.data
+                        app.config['S3_REGION'] = form.wasabi_region.data
+                        app.config['S3_ENDPOINT'] = f'https://s3.{form.wasabi_region.data}.wasabisys.com'
+                    except Exception as e:
+                        logger.error(f"Fout bij updaten van .env bestand: {e}")
+                        flash(f"Waarschuwing: De Wasabi configuratie kon niet worden opgeslagen in het .env bestand: {e}", "warning")
             
             # Commit wijzigingen naar database
             db.session.commit()
             
             flash('Setup succesvol voltooid! Je kunt nu inloggen met je administrator account.', 'success')
-            return render_template('setup.html', title='Radiologger Setup', form=form, success=True)
+            return render_template('setup.html', title='Radiologger Setup', form=form, success=True, wasabi_configured=wasabi_configured)
         
         except Exception as e:
             db.session.rollback()
             logger.error(f"Setup error: {e}")
             flash(f'Er is een fout opgetreden bij de setup: {str(e)}', 'danger')
     
-    return render_template('setup.html', title='Radiologger Setup', form=form, success=False)
+    return render_template('setup.html', title='Radiologger Setup', form=form, success=False, wasabi_configured=wasabi_configured)
 
 @app.errorhandler(500)
 def internal_error(error):

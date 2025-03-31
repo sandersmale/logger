@@ -1,8 +1,8 @@
 # Eenvoudige installatie-instructies voor Radiologger
 
-Deze instructies zorgen voor een eenvoudige en foutloze installatie van Radiologger.
+Deze instructies zorgen voor een eenvoudige en foutbestendige installatie van Radiologger, met automatische controle en herstel van missende componenten.
 
-## Eén-commando installatie
+## Eén-commando installatie (aanbevolen)
 
 Kopieer en plak het volgende commando om Radiologger volledig te installeren:
 
@@ -12,9 +12,15 @@ sudo bash -c 'apt update && apt install -y git apache2 curl python3 python3-venv
 
 Dit commando doet alles in één keer:
 1. Installeert alle benodigde systeem pakketten
-2. Maakt een tijdelijke map aan en downloadt alle bestanden van GitHub
+2. Maakt een tijdelijke map aan en downloadt de installatie bestanden
 3. Activeert de benodigde Apache modules
-4. Voert het installatiescript uit
+4. Voert het installatiescript uit met volautomatische foutdetectie en herstel
+
+### Verbeterde installatie met:
+- Automatische detectie en download van missende bestanden
+- Meerdere download methoden als fallback
+- Betere foutafhandeling en herstel van installatiefouten
+- Uitgebreide logregistratie voor probleemoplossing
 
 ## Stapsgewijze installatie (alternatief)
 
@@ -47,26 +53,54 @@ sudo ./install.sh
 Na de installatie kun je Radiologger bereiken via:
 - http://[jouw-server-ip] of https://[jouw-domeinnaam] (als SSL is geconfigureerd)
 
-Bij de eerste keer openen, word je gevraagd om:
+Bij de eerste keer openen van de webinterface hoef je alleen nog maar:
 1. Een admin account aan te maken
-2. Wasabi S3 opslag te configureren
+
+De Wasabi S3-configuratie is al tijdens de installatie ingesteld (het script vraagt om deze gegevens). Je kunt deze configuratie later aanpassen in het admin dashboard als dat nodig is.
 
 ## Troubleshooting
 
 Als je problemen ondervindt, gebruik de volgende commando's:
+
+### Controleer installatiestatus
 ```bash
-# Controleer installatie logs
+# Toon gekleurde, gedetailleerde installatie logs
 sudo cat /tmp/radiologger_install.log
 sudo cat /tmp/radiologger_install_error.log
 
 # Controleer service status
 sudo systemctl status radiologger
 sudo systemctl status apache2
+sudo systemctl status postgresql
+```
 
+### Veelvoorkomende problemen oplossen
+```bash
 # Controleer applicatie logs
 sudo tail -f /var/log/radiologger/error.log
 sudo tail -f /var/log/apache2/error.log
+sudo journalctl -u radiologger --no-pager -n 50
 
 # Herstel permissies indien nodig
 sudo bash /opt/radiologger/fix_permissions.sh
+
+# Start de service opnieuw
+sudo systemctl restart radiologger
+
+# Controleer database status
+sudo -u postgres psql -c "\l" | grep radiologger
+```
+
+### Als database problemen blijven bestaan
+```bash
+# Reset de database compleet (waarschuwing: verwijdert alle gegevens!)
+cd /opt/radiologger
+sudo -u radiologger bash -c "source venv/bin/activate && python reset_db.py && deactivate"
+```
+
+### Controleer of de flask app correct werkt
+```bash
+# Test de Flask app direct
+cd /opt/radiologger
+sudo -u radiologger bash -c "source venv/bin/activate && python main.py && deactivate"
 ```
