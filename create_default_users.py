@@ -14,18 +14,12 @@ os.environ['PYTHONPATH'] = str(base_path)
 try:
     from app import db, app
     from models import User
-    from werkzeug.security import generate_password_hash
     
     with app.app_context():
         if User.query.count() == 0:
-            admin = User(username='admin', role='admin', password_hash=generate_password_hash('radioadmin'))
-            editor = User(username='editor', role='editor', password_hash=generate_password_hash('radioeditor'))
-            listener = User(username='luisteraar', role='listener', password_hash=generate_password_hash('radioluisteraar'))
-            db.session.add(admin)
-            db.session.add(editor)
-            db.session.add(listener)
-            db.session.commit()
-            print('✅ Standaard gebruikers aangemaakt')
+            print('Geen gebruikers gevonden. Gebruikers worden aangemaakt via de setup pagina bij eerste bezoek.')
+        else:
+            print(f'Er zijn al {User.query.count()} gebruikers in de database.')
     sys.exit(0)
 except Exception as e:
     print(f'❌ Fout bij aanmaken gebruikers: {e}')

@@ -490,12 +490,21 @@ cp "$INSTALL_DIR/radiologger_apache.conf" /etc/apache2/sites-available/ || { log
 
 # Bewerk de Apache config om de domeinnaam in te stellen als die is opgegeven
 if [ ! -z "$DOMAIN_NAME" ]; then
-    sed -i "s/ServerName example.com/ServerName $DOMAIN_NAME/g" /etc/apache2/sites-available/radiologger_apache.conf
+    # Update voor zowel HTTP als HTTPS sectie
+    sed -i "s/ServerName _default_/ServerName $DOMAIN_NAME/g" /etc/apache2/sites-available/radiologger_apache.conf
+    sed -i "s/ServerName SERVER_DOMAIN/ServerName $DOMAIN_NAME/g" /etc/apache2/sites-available/radiologger_apache.conf
     log_info "Domeinnaam $DOMAIN_NAME ingesteld in Apache configuratie"
+else
+    # Verander _default_ niet, dat zorgt ervoor dat hij op alle domeinen/IPs luistert
+    log_info "Geen domeinnaam opgegeven, Apache luistert op alle domeinen/IPs"
 fi
 
-# Schakel de site in
-a2ensite radiologger_apache.conf || { log_error "Kan site niet inschakelen"; exit 1; }
+# Schakel de default site uit
+log_info "Deactiveren van default Apache site..."
+a2dissite 000-default || log_warning "Kon default site niet uitschakelen (mogelijk niet aanwezig)"
+
+# Schakel de radiologger site in
+a2ensite radiologger_apache.conf || { log_error "Kan radiologger site niet inschakelen"; exit 1; }
 
 # SSL certificaat installeren als er een domeinnaam en email is opgegeven
 if [ ! -z "$DOMAIN_NAME" ] && [ ! -z "$EMAIL" ]; then
@@ -595,7 +604,12 @@ log_info "Database initialiseren..."
 cd "$INSTALL_DIR" || { log_error "Kan niet naar $INSTALL_DIR navigeren"; exit 1; }
 sudo -u radiologger bash -c "cd $INSTALL_DIR && source venv/bin/activate && python init_db.py" || log_error "Waarschuwing: Kon database niet initialiseren"
 
-# Stap 15: Start de service
+# Stap 15: Reset gebruikers (zodat setup pagina verschijnt)
+log_info "Gebruikers resetten zodat de setup pagina verschijnt..."
+cd "$INSTALL_DIR" || { log_error "Kan niet naar $INSTALL_DIR navigeren"; exit 1; }
+sudo -u radiologger bash -c "cd $INSTALL_DIR && source venv/bin/activate && python reset_users.py" || log_warning "Kon gebruikers niet resetten"
+
+# Stap 16: Start de service
 log_info "Radiologger service starten..."
 systemctl start radiologger
 if ! systemctl is-active --quiet radiologger; then
@@ -693,5 +707,9 @@ echo ""
 echo "Bekijk installatie logs met:"
 echo "  sudo cat $LOG_FILE"
 echo "  sudo cat $ERROR_LOG"
+echo ""
+echo "BELANGRIJK: Bij de eerste keer bezoeken van de web interface zou je de setup pagina"
+echo "moeten zien (NIET de login pagina). Als je direct het login scherm ziet, voer uit:"
+echo "  cd /opt/radiologger && sudo ./diagnose_setup.sh"
 
 log_success "Installatie succesvol afgerond!"

@@ -175,30 +175,7 @@ try:
         user_count = 0  # Veilige fallback
     
     if user_count == 0:
-        logger.info("Geen gebruikers gevonden, standaard gebruikers aanmaken...")
-        
-        # Genereer gehashte wachtwoorden (hard-coded hashes voor demo)
-        admin_hash = 'pbkdf2:sha256:150000$8e7e812c0e87d1b9e27efaca3f63ce84cfddfbe10be3a1de9c9a3f2c22ff9e91'
-        editor_hash = 'pbkdf2:sha256:150000$bc88b347fba0cb8eeeb35050a45794a41c71fcb56e2e5ef0f26c71213000f89a'
-        listener_hash = 'pbkdf2:sha256:150000$66d6f30f0bef2c6b9622c93aa6906bbe5b3c5a87e0ef3acb5e9f55b468c83e90'
-        
-        # Maak de standaard gebruikers aan
-        cursor.execute("""
-            INSERT INTO "user" (username, password_hash, role)
-            VALUES (%s, %s, %s)
-        """, ("admin", admin_hash, "admin"))
-        
-        cursor.execute("""
-            INSERT INTO "user" (username, password_hash, role)
-            VALUES (%s, %s, %s)
-        """, ("editor", editor_hash, "editor"))
-        
-        cursor.execute("""
-            INSERT INTO "user" (username, password_hash, role)
-            VALUES (%s, %s, %s)
-        """, ("luisteraar", listener_hash, "listener"))
-        
-        logger.info("Standaard gebruikers aangemaakt")
+        logger.info("Geen gebruikers gevonden. Gebruikers worden aangemaakt via de setup pagina bij eerste bezoek.")
     else:
         logger.info(f"Er zijn al {user_count} gebruikers in de database")
     

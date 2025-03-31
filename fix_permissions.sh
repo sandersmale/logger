@@ -138,8 +138,8 @@ echo ""
 echo "Herstarten van services..."
 echo "Radiologger service herstarten..."
 systemctl restart radiologger
-echo "Nginx herstarten..."
-systemctl restart nginx
+echo "Apache2 herstarten..."
+systemctl restart apache2
 
 # Toon status
 echo ""

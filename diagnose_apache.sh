@@ -46,11 +46,28 @@ done
 echo -e "${YELLOW}[CHECK]${NC} Controleren welke sites geactiveerd zijn..."
 ls -la /etc/apache2/sites-enabled/
 
-# Schakel default site uit als deze nog actief is
-if [ -L /etc/apache2/sites-enabled/000-default.conf ]; then
-    echo -e "${RED}[ERROR]${NC} Default site nog actief. Uitschakelen..."
-    a2dissite 000-default
-    RESTART_NEEDED=true
+# Schakel alle default sites uit die mogelijk nog actief zijn
+echo -e "${YELLOW}[CHECK]${NC} Zoeken naar actieve default sites..."
+for default_site in /etc/apache2/sites-enabled/000-default*.conf; do
+    if [ -L "$default_site" ]; then
+        site_name=$(basename "$default_site" .conf)
+        echo -e "${RED}[ERROR]${NC} Default site $site_name nog actief. Uitschakelen..."
+        a2dissite "$site_name"
+        RESTART_NEEDED=true
+    fi
+done
+
+# Zoek ook naar andere default sites die mogelijk actief zijn
+if ls /etc/apache2/sites-enabled/default*.conf &>/dev/null; then
+    echo -e "${RED}[ERROR]${NC} Andere default sites gevonden. Uitschakelen..."
+    for default_site in /etc/apache2/sites-enabled/default*.conf; do
+        if [ -L "$default_site" ]; then
+            site_name=$(basename "$default_site" .conf)
+            echo -e "${RED}[ERROR]${NC} Default site $site_name uitschakelen..."
+            a2dissite "$site_name"
+            RESTART_NEEDED=true
+        fi
+    done
 fi
 
 # Controleer radiologger configuratie
@@ -195,10 +212,27 @@ fi
 
 # Controleer verbinding met de applicatie
 echo -e "${YELLOW}[CHECK]${NC} Controleren verbinding met de applicatie..."
-if curl -s http://localhost:5000/ | grep -q "login"; then
-    echo -e "${GREEN}[OK]${NC} Verbinding met de applicatie succesvol"
+APP_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/)
+if [[ "$APP_RESPONSE" == "200" ]]; then
+    echo -e "${GREEN}[OK]${NC} Verbinding met de applicatie succesvol (HTTP 200 OK)"
+elif [[ "$APP_RESPONSE" == "302" ]]; then
+    echo -e "${GREEN}[OK]${NC} Verbinding met de applicatie succesvol (HTTP 302 Redirect)"
 else
-    echo -e "${RED}[ERROR]${NC} Kon geen verbinding maken met de applicatie!"
+    echo -e "${RED}[ERROR]${NC} Kon geen succesvolle verbinding maken met de applicatie! (HTTP $APP_RESPONSE)"
+    echo -e "${YELLOW}[INFO]${NC} Probeer handmatig te controleren met: curl -v http://localhost:5000/"
+fi
+
+# Extra check voor de inhoud (maar niet als foutmelding gebruiken)
+echo -e "${YELLOW}[CHECK]${NC} Controleren of de applicatie inhoud bevat..."
+APP_CONTENT=$(curl -s http://localhost:5000/)
+if echo "$APP_CONTENT" | grep -q "Radiologger"; then
+    echo -e "${GREEN}[OK]${NC} Applicatie bevat 'Radiologger' in de output"
+elif echo "$APP_CONTENT" | grep -q "login\|setup\|inloggen\|admin"; then
+    echo -e "${GREEN}[OK]${NC} Applicatie bevat login of setup pagina in de output"
+else
+    echo -e "${YELLOW}[WARNING]${NC} Kon geen herkenbare inhoud vinden, maar dit betekent niet dat de applicatie niet werkt"
+    APP_CONTENT_SIZE=${#APP_CONTENT}
+    echo -e "${YELLOW}[INFO]${NC} Ontvangen inhoud is $APP_CONTENT_SIZE bytes groot"
 fi
 
 # Restart Apache indien nodig
