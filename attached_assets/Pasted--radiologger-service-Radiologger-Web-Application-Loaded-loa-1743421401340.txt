@@ -1,0 +1,34 @@
+ ● radiologger.service - Radiologger Web Application                             
+      Loaded: loaded (/etc/systemd/system/radiologger.service; enabled; preset: >
+      Active: active (running) since Mon 2025-03-31 11:35:29 UTC; 5min ago       
+    Main PID: 30088 (gunicorn)                                                   
+       Tasks: 10 (limit: 1113)                                                   
+      Memory: 181.9M (peak: 182.2M)                                              
+         CPU: 3.151s                                                             
+      CGroup: /system.slice/radiologger.service                                  
+              ├─30088 /opt/radiologger/venv/bin/python3 /opt/radiologger/venv/bi>
+              ├─30090 /opt/radiologger/venv/bin/python3 /opt/radiologger/venv/bi>
+              ├─30091 /opt/radiologger/venv/bin/python3 /opt/radiologger/venv/bi>
+              └─30092 /opt/radiologger/venv/bin/python3 /opt/radiologger/venv/bi>
+                                                                                 
+ Mar 31 11:35:42 vpn gunicorn[30091]: 2025-03-31 11:35:42,570 - logger - INFO - >
+ Mar 31 11:35:42 vpn gunicorn[30091]: 2025-03-31 11:35:42,571 - apscheduler.sche>
+ Mar 31 11:35:42 vpn gunicorn[30090]: 2025-03-31 11:35:42,570 - apscheduler.exec>
+ Mar 31 11:35:42 vpn gunicorn[30091]: 2025-03-31 11:35:42,572 - logger - ERROR ->
+ Mar 31 11:35:42 vpn gunicorn[30091]: 2025-03-31 11:35:42,572 - apscheduler.exec>
+ Mar 31 11:35:42 vpn gunicorn[30092]: 2025-03-31 11:35:42,636 - apscheduler.exec>
+ Mar 31 11:35:42 vpn gunicorn[30092]: 2025-03-31 11:35:42,637 - logger - INFO - >
+ Mar 31 11:35:42 vpn gunicorn[30092]: 2025-03-31 11:35:42,637 - apscheduler.sche>
+ Mar 31 11:35:42 vpn gunicorn[30092]: 2025-03-31 11:35:42,638 - logger - ERROR ->
+ Mar 31 11:35:42 vpn gunicorn[30092]: 2025-03-31 11:35:42,638 - apscheduler.exec>
+ 
+
+ root@vpn:~# ls -la /etc/apache2/sites-enabled/                                  
+ total 8                                                                         
+ drwxr-xr-x 2 root root 4096 Mar 31 11:27 .                                      
+ drwxr-xr-x 8 root root 4096 Mar 31 11:27 ..                                     
+ lrwxrwxrwx 1 root root   35 Mar 31 11:25 000-default.conf -> ../sites-available/
+ 000-default.conf                                                                
+ lrwxrwxrwx 1 root root   42 Mar 31 11:27 radiologger_apache.conf -> ../sites-ava
+ ilable/radiologger_apache.conf                                                  
+ 
