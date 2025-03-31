@@ -2,6 +2,8 @@
 
 Deze instructies zorgen voor een eenvoudige en foutbestendige installatie van Radiologger, met automatische controle en herstel van missende componenten.
 
+> **Belangrijke update**: Nu compatible met Ubuntu 24.04 LTS! Het installatiescript detecteert automatisch Ubuntu 24.04 en gebruikt de vereiste `--break-system-packages` flag voor pip installaties.
+
 ## Eén-commando installatie (aanbevolen)
 
 Kopieer en plak het volgende commando om Radiologger volledig te installeren:
@@ -60,7 +62,29 @@ De Wasabi S3-configuratie is al tijdens de installatie ingesteld (het script vra
 
 ## Troubleshooting
 
-Als je problemen ondervindt, gebruik de volgende commando's:
+### Ubuntu 24.04 specifieke problemen
+
+Bij Ubuntu 24.04 kun je deze foutmelding zien: `error: externally-managed-environment`. Dit komt door een verandering in hoe Python packages beheert. Het installatiescript detecteert dit automatisch en lost het op met de `--break-system-packages` flag. 
+
+Als je problemen ondervindt met de installatie op Ubuntu 24.04, gebruik het speciale diagnose script:
+
+```bash
+sudo bash /opt/radiologger/diagnose_ubuntu24.sh
+```
+
+Dit script detecteert en lost de meest voorkomende problemen automatisch op. Als je toch handmatig wilt ingrijpen, kun je dit doen:
+
+```bash
+cd /opt/radiologger
+source venv/bin/activate
+pip install -r requirements.txt --break-system-packages
+deactivate
+sudo systemctl restart radiologger
+```
+
+### Algemene problemen
+
+Als je andere problemen ondervindt, gebruik de volgende commando's:
 
 ### Controleer installatiestatus
 ```bash

@@ -1,40 +1,20 @@
 import os
 import logging
-from flask import Flask
 
 # Configureer logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger('app')
+logger.info("Radiologger applicatie wordt gestart...")
 
-# create the app
-app = Flask(__name__)
-
-# setup a secret key
-app.secret_key = os.environ.get("FLASK_SECRET_KEY", "development-key-replace-in-production")
-
-# configureer de database
-app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
-app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
-    "pool_recycle": 300,
-    "pool_pre_ping": True,
-}
-
-# Log de database URL (verberg wachtwoord voor veiligheid)
-db_url = os.environ.get("DATABASE_URL", "")
-if db_url:
-    parts = db_url.split('@')
-    if len(parts) > 1:
-        credential_parts = parts[0].split(':')
-        if len(credential_parts) > 2:
-            masked_url = f"{credential_parts[0]}:****@{parts[1]}"
-            logger.info(f"App configuratie geladen. Database: {masked_url}")
-
-# Importeer app.py (de echte app definitie)
-from app import app as flask_app
-
-# Deze import moet na app.py komen om circulaire imports te voorkomen
-import routes
+# Importeer app.py (de volledige Flask app definitie)
+from app import app
 
 # Alleen voor lokale ontwikkeling
 if __name__ == "__main__":
+    # Debug modus automatisch inschakelen voor lokale ontwikkeling
+    app.config['DEBUG'] = True
+    logger.info("Applicatie gestart in debug modus op http://0.0.0.0:5000")
     app.run(host="0.0.0.0", port=5000, debug=True)

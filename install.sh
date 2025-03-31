@@ -266,32 +266,47 @@ python3 -m venv venv || { log_error "Kan Python venv niet aanmaken"; exit 1; }
 source venv/bin/activate || { log_error "Kan venv niet activeren"; exit 1; }
 pip install --upgrade pip || { log_error "Kan pip niet upgraden"; exit 1; }
 
-# Maak requirements.txt als deze niet bestaat
-if [ ! -f "requirements.txt" ]; then
-    log_info "requirements.txt bestand ontbreekt, maak aan met essentiële packages..."
+# Maak requirements.txt als deze niet bestaat of update bestaande requirements.txt
+log_info "Controleren of requirements.txt compatibel is met Flask en SQLAlchemy..."
+if [ ! -f "requirements.txt" ] || grep -q "Flask==2.0.1" "requirements.txt"; then
+    log_info "requirements.txt bestand ontbreekt of bevat incompatibele versies, bijwerken..."
     cat > requirements.txt << EOF
-Flask==2.0.1
-Flask-SQLAlchemy==3.0.3
-Flask-Login==0.6.2
-Flask-WTF==1.1.1
-psycopg2-binary==2.9.5
-gunicorn==21.2.0
-APScheduler==3.10.1
-boto3==1.28.3
-python-dotenv==1.0.0
-email-validator==2.0.0
-WTForms==3.0.1
-Werkzeug==2.2.3
-SQLAlchemy==2.0.9
-trafilatura==1.6.0
-requests==2.31.0
-psutil==5.9.0
+Flask>=2.2.0
+flask-sqlalchemy>=3.0.0
+Flask-Migrate>=4.0.0
+Flask-Login>=0.6.0
+Flask-WTF>=1.1.0
+APScheduler>=3.10.0
+python-dotenv>=1.0.0
+boto3>=1.28.0
+psycopg2-binary>=2.9.0
+gunicorn>=21.0.0
+psutil>=5.9.0
+requests>=2.30.0
+trafilatura>=1.6.0
+email-validator>=2.0.0
+werkzeug>=2.3.0
+wtforms>=3.0.0
+Flask-SQLAlchemy>=3.0.0
+SQLAlchemy>=2.0.0
 EOF
-    log_success "requirements.txt aangemaakt"
+    log_success "requirements.txt compatibel gemaakt en bijgewerkt"
 fi
 
-pip install -r requirements.txt || { log_error "Kan vereiste Python packages niet installeren"; exit 1; }
-pip install gunicorn psycopg2-binary || { log_error "Kan gunicorn of psycopg2 niet installeren"; exit 1; }
+# Ubuntu 24.04 vereist --break-system-packages flag
+if grep -q "Ubuntu 24" /etc/os-release 2>/dev/null; then
+    log_info "Ubuntu 24.04 gedetecteerd, gebruik --break-system-packages flag voor pip..."
+    pip install -r requirements.txt --break-system-packages || { log_error "Kan vereiste Python packages niet installeren"; exit 1; }
+else
+    pip install -r requirements.txt || { log_error "Kan vereiste Python packages niet installeren"; exit 1; }
+fi
+# Ubuntu 24.04 vereist --break-system-packages flag
+if grep -q "Ubuntu 24" /etc/os-release 2>/dev/null; then
+    log_info "Ubuntu 24.04 gedetecteerd, gebruik --break-system-packages flag voor pip..."
+    pip install gunicorn psycopg2-binary --break-system-packages || { log_error "Kan gunicorn of psycopg2 niet installeren"; exit 1; }
+else
+    pip install gunicorn psycopg2-binary || { log_error "Kan gunicorn of psycopg2 niet installeren"; exit 1; }
+fi
 deactivate
 
 # Stap 9: PostgreSQL setup
@@ -597,7 +612,13 @@ if ! systemctl is-active --quiet radiologger; then
         rm -rf venv
         python3 -m venv venv
         source venv/bin/activate
-        pip install -r requirements.txt
+        # Ubuntu 24.04 vereist --break-system-packages flag
+        if grep -q "Ubuntu 24" /etc/os-release 2>/dev/null; then
+            log_info "Ubuntu 24.04 gedetecteerd, gebruik --break-system-packages flag voor pip..."
+            pip install -r requirements.txt --break-system-packages
+        else
+            pip install -r requirements.txt
+        fi
         deactivate
     fi
     
@@ -605,7 +626,13 @@ if ! systemctl is-active --quiet radiologger; then
     if [ ! -f "$INSTALL_DIR/venv/bin/gunicorn" ]; then
         log_error "Gunicorn executable niet gevonden in venv"
         source "$INSTALL_DIR/venv/bin/activate"
-        pip install gunicorn
+        # Ubuntu 24.04 vereist --break-system-packages flag
+        if grep -q "Ubuntu 24" /etc/os-release 2>/dev/null; then
+            log_info "Ubuntu 24.04 gedetecteerd, gebruik --break-system-packages flag voor pip..."
+            pip install gunicorn --break-system-packages
+        else
+            pip install gunicorn
+        fi
         deactivate
     fi
     
