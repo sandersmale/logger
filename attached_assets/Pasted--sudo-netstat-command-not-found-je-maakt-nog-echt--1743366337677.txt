@@ -1,0 +1,51 @@
+ sudo: netstat: command not found                                                 je maakt nog echt gebruik van zeer oude kennis zorg dat je dat opvijselt. 
+ errorlogs:
+   File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked   
+   File "<frozen importlib._bootstrap>", line 935, in _load_unlocked             
+   File "<frozen importlib._bootstrap_external>", line 995, in exec_module       
+   File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed  
+   File "/opt/radiologger/main.py", line 33, in <module>                         
+     from app import app as flask_app                                            
+   File "/opt/radiologger/app.py", line 82, in <module>                          
+     from auth import auth_bp                                                    
+   File "/opt/radiologger/auth.py", line 6, in <module>                          
+     from forms import LoginForm, UserForm                                       
+ ModuleNotFoundError: No module named 'forms'                                    
+ [2025-03-30 20:22:50 +0000] [27021] [INFO] Worker exiting (pid: 27021)          
+ [2025-03-30 20:22:51 +0000] [27018] [ERROR] Worker (pid:27019) exited with code 
+ 3                                                                               
+ [2025-03-30 20:22:51 +0000] [27018] [ERROR] Worker (pid:27020) exited with code 
+ 3                                                                               
+ [2025-03-30 20:22:56 +0000] [27024] [INFO] Starting gunicorn 23.0.0             
+ [2025-03-30 20:22:56 +0000] [27024] [INFO] Listening at: http://0.0.0.0:5000 (27
+ 024)                                                                            
+ [2025-03-30 20:22:56 +0000] [27024] [INFO] Using worker: sync                   
+ [2025-03-30 20:22:56 +0000] [27025] [INFO] Booting worker with pid: 27025       
+ [2025-03-30 20:22:56 +0000] [27026] [INFO] Booting worker with pid: 27026       
+ [2025-03-30 20:22:56 +0000] [27027] [INFO] Booting worker with pid: 27027       
+ 
+volgende log
+ [Sun Mar 30 20:15:16.787753 2025] [core:notice] [pid 25751:tid 124973858854784] 
+ AH00094: Command line: '/usr/sbin/apache2'                                      
+ [Sun Mar 30 20:16:58.836051 2025] [mpm_event:notice] [pid 25751:tid 124973858854
+ 784] AH00492: caught SIGWINCH, shutting down gracefully                         
+ [Sun Mar 30 20:16:58.929729 2025] [mpm_event:notice] [pid 26010:tid 123909067683
+ 712] AH00489: Apache/2.4.58 (Ubuntu) OpenSSL/3.0.13 mod_wsgi/5.0.0 Python/3.12 c
+ onfigured -- resuming normal operations                                         
+ [Sun Mar 30 20:16:58.929862 2025] [core:notice] [pid 26010:tid 123909067683712] 
+ AH00094: Command line: '/usr/sbin/apache2'                                      
+ [Sun Mar 30 20:18:01.612444 2025] [mpm_event:notice] [pid 26010:tid 123909067683
+ 712] AH00492: caught SIGWINCH, shutting down gracefully                         
+ [Sun Mar 30 20:18:02.053283 2025] [mpm_event:notice] [pid 26577:tid 126056231176
+ 064] AH00489: Apache/2.4.58 (Ubuntu) OpenSSL/3.0.13 mod_wsgi/5.0.0 Python/3.12 c
+ onfigured -- resuming normal operations                                         
+ [Sun Mar 30 20:18:02.053448 2025] [core:notice] [pid 26577:tid 126056231176064] 
+ AH00094: Command line: '/usr/sbin/apache2'                                      
+ [Sun Mar 30 20:21:01.503470 2025] [mpm_event:notice] [pid 26577:tid 126056231176
+ 064] AH00492: caught SIGWINCH, shutting down gracefully                         
+ [Sun Mar 30 20:21:01.651707 2025] [mpm_event:notice] [pid 26869:tid 139830581340
+ 032] AH00489: Apache/2.4.58 (Ubuntu) OpenSSL/3.0.13 mod_wsgi/5.0.0 Python/3.12 c
+ onfigured -- resuming normal operations                                         
+ [Sun Mar 30 20:21:01.651904 2025] [core:notice] [pid 26869:tid 139830581340032] 
+ AH00094: Command line: '/usr/sbin/apache2'                                      
+ 
