@@ -45,7 +45,7 @@ Als je direct het login scherm ziet in plaats van de setup pagina:
 ```bash
 # Reset gebruikers om de setup pagina te forceren
 cd /opt/radiologger
-sudo python reset_users.py
+sudo python3 reset_users.py
 
 # Herstart de service
 sudo systemctl restart radiologger

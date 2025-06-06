@@ -38,7 +38,7 @@ ssh gebruiker@jouw-server-ip
 
 # Reset gebruikers om de setup pagina te forceren
 cd /opt/radiologger
-sudo python reset_users.py
+sudo python3 reset_users.py
 
 # Herstart de service
 sudo systemctl restart radiologger
